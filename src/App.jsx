@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import avatarNick from "../assets/avatar-nick.png";
-import signatureNew from "../assets/signature-new.png";
+import avatarNick from "../assets/avatar-nick-small.png";
+import signatureNew from "../assets/signature-new-small.png";
 import shotVintageCar from "../assets/optimized/shots-000032420024.webp";
 import shotWhiteFenceLandscape from "../assets/optimized/shots-000041000002.webp";
 import shotHallwayWindow from "../assets/optimized/shots-000041000004.webp";
@@ -985,6 +985,8 @@ function MediaCard({ isHidden, item, onClick, refCallback }) {
 
 function WorkVideo({ item }) {
   const videoRef = useRef(null);
+  const [isNearViewport, setIsNearViewport] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -994,23 +996,19 @@ function WorkVideo({ item }) {
     }
 
     if (!("IntersectionObserver" in window)) {
-      video.play().catch(() => {});
+      setIsNearViewport(true);
+      setShouldLoad(true);
       return undefined;
     }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          video.play().catch(() => {});
-          return;
-        }
-
-        video.pause();
+        setIsNearViewport(entry.isIntersecting);
       },
       {
         root: null,
-        rootMargin: "160px 0px",
-        threshold: 0.08,
+        rootMargin: "360px 0px",
+        threshold: 0.01,
       },
     );
 
@@ -1020,7 +1018,23 @@ function WorkVideo({ item }) {
       observer.disconnect();
       video.pause();
     };
-  }, [item.src]);
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    if (isNearViewport) {
+      setShouldLoad(true);
+      video.play().catch(() => {});
+      return;
+    }
+
+    video.pause();
+  }, [isNearViewport, shouldLoad]);
 
   return (
     <video
@@ -1030,8 +1044,8 @@ function WorkVideo({ item }) {
       loop
       muted
       playsInline
-      preload="metadata"
-      src={item.src}
+      preload={shouldLoad ? "metadata" : "none"}
+      src={shouldLoad ? item.src : undefined}
     />
   );
 }

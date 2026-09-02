@@ -424,6 +424,12 @@
         will-change: transform;
       }
 
+      .work-video {
+        aspect-ratio: 1 / 1;
+        background: #f7f7f7;
+        object-fit: cover;
+      }
+
       .media-viewer {
         position: fixed;
         inset: 0;
@@ -747,52 +753,7 @@
     </style>
   </head>
   <body>
-    <div id="root">
-      <header class="site-header" aria-label="Primary">
-        <img class="portrait" src="assets/avatar-nick.png" alt="Nick Pyl">
-      </header>
-
-      <main>
-        <section class="intro" aria-labelledby="intro-title">
-          <h1 id="intro-title" hidden>Nick Pyl</h1>
-          <img class="signature" src="assets/signature-new.png" alt="Nick Pyl signature">
-          <p class="bio">
-            Interface Designer based in Amsterdam, focused on interaction, <br>
-            and digital experiences.
-            Previously <a class="text-link" href="https://fusewallet.com/" target="_blank" rel="noreferrer">fusewallet</a>
-            at <a class="text-link" href="https://squads.xyz/" target="_blank" rel="noreferrer">squadslabs</a>, currently exploring
-            ideas through product work and experiments.
-          </p>
-          <p class="contact-line">
-            You can contact me via <a class="email" href="mailto:hello@nickpyl.space">email</a>
-            or find me on <a class="text-link" href="https://twitter.com/" target="_blank" rel="noreferrer">twitter</a>
-          </p>
-        </section>
-
-        <section class="projects" aria-label="Selected work">
-          <article class="project">
-            <h2 class="project-title">Work</h2>
-            <div class="project-media">
-              <img class="project-image" src="assets/work-hover.png" alt="Laptop lid with Squads stickers">
-            </div>
-          </article>
-
-          <article class="project">
-            <h2 class="project-title">Shots</h2>
-            <div class="project-media">
-              <img class="project-image" src="assets/shots-hover.png" alt="Black camera side profile">
-            </div>
-          </article>
-
-          <article class="project">
-            <h2 class="project-title">Note</h2>
-            <div class="project-media">
-              <img class="project-image" src="assets/note-hover.png" alt="Black phone front">
-            </div>
-          </article>
-        </section>
-      </main>
-    </div>
+    <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

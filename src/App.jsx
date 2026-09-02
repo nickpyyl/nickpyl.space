@@ -274,25 +274,25 @@ function BioBlock() {
       <img className="signature" src={signatureNew} alt="Nick Pyl signature" />
       <div className="bio-copy">
         <p>
-          Interface Designer in Amsterdam, working across interaction, product, and digital experiences. Currently
-          Product Design Lead at{" "}
+          Currently Product Design Lead at{" "}
           <a href="https://x.com/phantom" target="_blank" rel="noreferrer">
             Phantom
           </a>
           , previously at{" "}
-          <a href="https://fusewallet.com/" target="_blank" rel="noreferrer">
+          <a href="https://x.com/fusewallet" target="_blank" rel="noreferrer">
             Fuse
           </a>{" "}
           /{" "}
-          <a href="https://squads.xyz/" target="_blank" rel="noreferrer">
+          <a href="https://x.com/squadslabs" target="_blank" rel="noreferrer">
             Squads Labs
           </a>
-          .
+          . I design digital products and spend probably too much time thinking about how they move, respond, and
+          feel.
         </p>
         <p className="contact-line">
           <a href="mailto:hello@nickpyl.space">Email me</a>
           <span> or find me on</span>{" "}
-          <a href="https://twitter.com/" target="_blank" rel="noreferrer">
+          <a href="https://x.com/nickpylll" target="_blank" rel="noreferrer">
             X
           </a>
           <span>.</span>

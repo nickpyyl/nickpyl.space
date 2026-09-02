@@ -129,19 +129,39 @@ const content = {
       { type: "video", src: explorationMedia02, alt: "Exploration interaction video 2" },
       { type: "video", src: explorationMedia01, alt: "Exploration interaction video 1" },
       { type: "video", src: explorationMedia03, alt: "Exploration interaction video 3" },
-      { type: "video", src: explorationMedia04, alt: "Exploration interaction video 4" },
+      {
+        type: "video",
+        src: explorationMedia04,
+        alt: "Exploration interaction video 4",
+        aspectRatio: "1218 / 720",
+      },
       { type: "video", src: explorationMedia05, alt: "Exploration interaction video 5" },
       { type: "video", src: explorationMedia06, alt: "Exploration interaction video 6" },
       { type: "video", src: explorationMedia07, alt: "Exploration interaction video 7" },
       { type: "video", src: explorationMedia08, alt: "Exploration interaction video 8" },
       { type: "video", src: explorationMedia09, alt: "Exploration interaction video 9" },
       { type: "video", src: explorationMedia10, alt: "Exploration interaction video 10" },
-      { type: "video", src: explorationMedia11, alt: "Exploration interaction video 11" },
+      {
+        type: "video",
+        src: explorationMedia11,
+        alt: "Exploration interaction video 11",
+        aspectRatio: "1262 / 1080",
+      },
       { type: "video", src: explorationMedia12, alt: "Exploration interaction video 12" },
-      { type: "video", src: explorationMedia13, alt: "Exploration interaction video 13" },
+      {
+        type: "video",
+        src: explorationMedia13,
+        alt: "Exploration interaction video 13",
+        aspectRatio: "1370 / 1080",
+      },
       { type: "video", src: explorationMedia14, alt: "Exploration interaction video 14" },
       { type: "video", src: explorationMedia15, alt: "Exploration interaction video 15" },
-      { type: "video", src: explorationMedia16, alt: "Exploration interaction video 16" },
+      {
+        type: "video",
+        src: explorationMedia16,
+        alt: "Exploration interaction video 16",
+        aspectRatio: "1142 / 1080",
+      },
       { type: "video", src: explorationMedia17, alt: "Exploration interaction video 17" },
       { type: "video", src: explorationMedia18, alt: "Exploration interaction video 18" },
     ],
@@ -969,6 +989,7 @@ function MediaCard({ isHidden, item, onClick, refCallback }) {
     <button
       className="work-media-card"
       data-hidden={isHidden ? "true" : "false"}
+      style={item.aspectRatio ? { "--media-aspect-ratio": item.aspectRatio } : undefined}
       type="button"
       onClick={onClick}
       ref={refCallback}

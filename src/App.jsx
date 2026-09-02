@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import avatarNick from "../assets/avatar-nick.png";
+import signatureNew from "../assets/signature-new.png";
 import shotVintageCar from "../assets/optimized/shots-000032420024.webp";
 import shotWhiteFenceLandscape from "../assets/optimized/shots-000041000002.webp";
 import shotHallwayWindow from "../assets/optimized/shots-000041000004.webp";
@@ -269,7 +271,7 @@ function PortfolioNav({ selectedId, onSelect }) {
 function BioBlock() {
   return (
     <section className="bio-block" aria-label="About Nick Pyl">
-      <img className="signature" src="assets/signature-new.png" alt="Nick Pyl signature" />
+      <img className="signature" src={signatureNew} alt="Nick Pyl signature" />
       <div className="bio-copy">
         <p>
           Interface Designer in Amsterdam, working across interaction, product, and digital experiences. Currently
@@ -1333,7 +1335,7 @@ function App() {
   return (
     <div className="portfolio-shell">
       <aside className="sidebar">
-        <img className="portrait" src="assets/avatar-nick.png" alt="Nick Pyl" />
+        <img className="portrait" src={avatarNick} alt="Nick Pyl" />
         <PortfolioNav selectedId={selectedId} onSelect={handleSelect} />
         <BioBlock />
       </aside>

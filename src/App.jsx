@@ -289,7 +289,7 @@ function BioBlock() {
           .
         </p>
         <p>
-          I design digital products and spend probably too much time thinking about how they move, respond, and feel.
+          I design products and spend probably too much time thinking about how they move, respond, and feel.
         </p>
         <p className="contact-line">
           <a href="mailto:hello@nickpyl.space">Email me</a>

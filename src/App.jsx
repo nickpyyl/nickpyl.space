@@ -274,7 +274,7 @@ function BioBlock() {
       <img className="signature" src={signatureNew} alt="Nick Pyl signature" />
       <div className="bio-copy">
         <p>
-          Currently Product Design Lead at{" "}
+          Currently Design Lead at{" "}
           <a href="https://x.com/phantom" target="_blank" rel="noreferrer">
             Phantom
           </a>
@@ -286,8 +286,10 @@ function BioBlock() {
           <a href="https://x.com/squadslabs" target="_blank" rel="noreferrer">
             Squads Labs
           </a>
-          . I design digital products and spend probably too much time thinking about how they move, respond, and
-          feel.
+          .
+        </p>
+        <p>
+          I design digital products and spend probably too much time thinking about how they move, respond, and feel.
         </p>
         <p className="contact-line">
           <a href="mailto:hello@nickpyl.space">Email me</a>

@@ -1,0 +1,9 @@
+.DS_Store
+.npm-cache/
+.tools/
+dist/
+node_modules/
+npm
+gh
+assets/shots-*.jpg
+assets/shots-detail-*

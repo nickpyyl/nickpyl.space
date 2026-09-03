@@ -215,6 +215,7 @@ const pageLoop = [
 ];
 const NEXT_PAGE_WHEEL_THRESHOLD = 560;
 const NEXT_PAGE_TOUCH_THRESHOLD = 180;
+const NEXT_PAGE_TOUCH_ACTIVATION = 8;
 const NEXT_PAGE_MAX_WHEEL_STEP = 60;
 const NEXT_PAGE_FIRST_SCROLL_HINT = 0.35;
 const NEXT_PAGE_HINT_DURATION = 355;
@@ -354,7 +355,11 @@ function NextPageLink({ currentId, onSelect }) {
   const resetTimerRef = useRef(null);
   const commitTimerRef = useRef(null);
   const touchStartRef = useRef(null);
+  const touchStartXRef = useRef(null);
+  const touchIdRef = useRef(null);
   const touchProgressRef = useRef(0);
+  const touchClaimedRef = useRef(false);
+  const touchStartedAtBottomRef = useRef(false);
   useEffect(() => {
     const button = buttonRef.current;
     const contentPane = button?.closest(".content-pane");
@@ -509,6 +514,10 @@ function NextPageLink({ currentId, onSelect }) {
     function handleScroll() {
       if (isAtBottom()) {
         scheduleStopRelease();
+
+        if (mobileQuery.matches) {
+          showFirstScrollHint();
+        }
       } else {
         window.clearTimeout(stopTimerRef.current);
         arrivalLockedRef.current = true;
@@ -521,41 +530,122 @@ function NextPageLink({ currentId, onSelect }) {
       }
     }
 
+    function findTrackedTouch(touchList) {
+      for (let index = 0; index < touchList.length; index += 1) {
+        if (touchList[index].identifier === touchIdRef.current) {
+          return touchList[index];
+        }
+      }
+
+      return null;
+    }
+
+    function clearTouchTracking() {
+      window.removeEventListener("touchmove", handleTouchMove);
+      touchStartRef.current = null;
+      touchStartXRef.current = null;
+      touchIdRef.current = null;
+      touchClaimedRef.current = false;
+      touchStartedAtBottomRef.current = false;
+    }
+
     function handleTouchStart(event) {
-      if (committed || event.touches.length !== 1 || !isAtBottom()) {
-        touchStartRef.current = null;
+      clearTouchTracking();
+
+      if (committed || !mobileQuery.matches || event.touches.length !== 1) {
         return;
       }
 
+      const touch = event.touches[0];
+      const startedAtBottom = isAtBottom();
+
+      touchIdRef.current = touch.identifier;
       clearResetTimer();
-      touchStartRef.current = event.touches[0].clientY;
+      touchStartRef.current = touch.clientY;
+      touchStartXRef.current = touch.clientX;
       touchProgressRef.current = progressRef.current;
+      touchStartedAtBottomRef.current = startedAtBottom;
+
+      if (startedAtBottom) {
+        window.addEventListener("touchmove", handleTouchMove, { passive: false });
+      }
     }
 
     function handleTouchMove(event) {
-      if (committed || touchStartRef.current === null || event.touches.length !== 1) {
+      if (committed || touchStartRef.current === null) {
         return;
       }
 
-      const pullDistance = touchStartRef.current - event.touches[0].clientY;
-      const nextProgress = touchProgressRef.current + pullDistance / NEXT_PAGE_TOUCH_THRESHOLD;
+      const touch = findTrackedTouch(event.touches);
 
-      if (nextProgress > 0 || progressRef.current > 0) {
-        event.preventDefault();
-        setProgress(nextProgress);
+      if (!touch) {
+        return;
       }
+
+      const pullDistance = touchStartRef.current - touch.clientY;
+      const horizontalDistance = Math.abs(touchStartXRef.current - touch.clientX);
+
+      if (!touchClaimedRef.current) {
+        if (horizontalDistance > Math.max(pullDistance, NEXT_PAGE_TOUCH_ACTIVATION)) {
+          clearTouchTracking();
+          return;
+        }
+
+        if (pullDistance < NEXT_PAGE_TOUCH_ACTIVATION) {
+          return;
+        }
+
+        touchClaimedRef.current = true;
+      }
+
+      event.preventDefault();
+      const adjustedPullDistance =
+        pullDistance > 0 ? pullDistance - NEXT_PAGE_TOUCH_ACTIVATION : pullDistance;
+      const nextProgress =
+        touchProgressRef.current + adjustedPullDistance / NEXT_PAGE_TOUCH_THRESHOLD;
+      setProgress(nextProgress);
     }
 
     function handleTouchEnd() {
-      if (touchStartRef.current === null || committed) {
+      if (touchStartRef.current === null) {
         return;
       }
 
-      touchStartRef.current = null;
+      const startedAtBottom = touchStartedAtBottomRef.current;
+      const claimed = touchClaimedRef.current;
+      clearTouchTracking();
+
+      if (committed) {
+        return;
+      }
+
+      if (!startedAtBottom) {
+        if (isAtBottom()) {
+          showFirstScrollHint();
+        }
+        return;
+      }
+
+      if (!claimed) {
+        return;
+      }
 
       if (progressRef.current >= 1) {
         commitNavigation();
       } else {
+        resetProgress(NEXT_PAGE_RESET_DELAY);
+      }
+    }
+
+    function handleTouchCancel() {
+      if (touchStartRef.current === null) {
+        return;
+      }
+
+      const claimed = touchClaimedRef.current;
+      clearTouchTracking();
+
+      if (claimed && !committed) {
         resetProgress(NEXT_PAGE_RESET_DELAY);
       }
     }
@@ -565,9 +655,8 @@ function NextPageLink({ currentId, onSelect }) {
     wheelTarget.addEventListener("wheel", handleWheel, { passive: false });
     scrollTarget.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
-    window.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", handleTouchCancel, { passive: true });
 
     return () => {
       wheelTarget.removeEventListener("wheel", handleWheel);
@@ -575,7 +664,7 @@ function NextPageLink({ currentId, onSelect }) {
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
-      window.removeEventListener("touchcancel", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchCancel);
       window.cancelAnimationFrame(visualFrameRef.current);
       window.clearTimeout(hintTimerRef.current);
       window.clearTimeout(stopTimerRef.current);

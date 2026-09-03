@@ -266,6 +266,17 @@ function pushRouteSectionId(sectionId) {
   }
 }
 
+function InteractiveLabel({ children, className = "" }) {
+  return (
+    <span className={`interactive-label ${className}`.trim()}>
+      <span>{children}</span>
+      <span className="interactive-label-gradient" aria-hidden="true">
+        {children}
+      </span>
+    </span>
+  );
+}
+
 function NavItem({ item, selectedId, onSelect }) {
   if (item.status === "Soon") {
     return (
@@ -283,11 +294,11 @@ function NavItem({ item, selectedId, onSelect }) {
       type="button"
       onClick={() => onSelect(item.id)}
     >
-      <span className={item.mobileLabel ? "nav-label nav-label--desktop" : "nav-label"}>
+      <InteractiveLabel className={item.mobileLabel ? "nav-label nav-label--desktop" : "nav-label"}>
         {item.label}
-      </span>
+      </InteractiveLabel>
       {item.mobileLabel ? (
-        <span className="nav-label nav-label--mobile">{item.mobileLabel}</span>
+        <InteractiveLabel className="nav-label nav-label--mobile">{item.mobileLabel}</InteractiveLabel>
       ) : null}
       {item.status ? <span className="nav-status">{item.status}</span> : null}
     </button>
@@ -336,15 +347,15 @@ function BioBlock() {
         <p>
           Currently Design Lead at{" "}
           <a href="https://x.com/phantom" target="_blank" rel="noreferrer">
-            Phantom
+            <InteractiveLabel>Phantom</InteractiveLabel>
           </a>
           , previously at{" "}
           <a href="https://x.com/fusewallet" target="_blank" rel="noreferrer">
-            Fuse
+            <InteractiveLabel>Fuse</InteractiveLabel>
           </a>{" "}
           /{" "}
           <a href="https://x.com/squadslabs" target="_blank" rel="noreferrer">
-            Squads Labs
+            <InteractiveLabel>Squads Labs</InteractiveLabel>
           </a>
           .
         </p>
@@ -352,10 +363,12 @@ function BioBlock() {
           I design products and spend probably too much time thinking about how they move, respond, and feel.
         </p>
         <p className="contact-line">
-          <a href="mailto:hello@nickpyl.space">Email me</a>
+          <a href="mailto:hello@nickpyl.space">
+            <InteractiveLabel>Email me</InteractiveLabel>
+          </a>
           <span> or find me on</span>{" "}
           <a href="https://x.com/nickpylll" target="_blank" rel="noreferrer">
-            X
+            <InteractiveLabel>X</InteractiveLabel>
           </a>
           <span>.</span>
         </p>

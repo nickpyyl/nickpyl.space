@@ -266,17 +266,45 @@
         outline: none;
       }
 
-      .nav-item[data-selected="true"] .nav-label,
-      .nav-item:not(.nav-item--disabled):hover .nav-label,
-      .nav-item:focus-visible .nav-label {
-        text-decoration: underline;
-        text-decoration-color: #a8a8a8;
-        text-decoration-style: dotted;
-        text-underline-offset: 3px;
+      .interactive-label {
+        position: relative;
+        display: inline-block;
+        transform-origin: center;
+        transition:
+          transform 360ms cubic-bezier(0.34, 1.56, 0.64, 1),
+          font-weight 180ms ease;
       }
 
       .nav-label--mobile {
         display: none;
+      }
+
+      .interactive-label-gradient {
+        position: absolute;
+        inset: 0;
+        color: transparent;
+        background-image: linear-gradient(
+          90deg,
+          #000000 0%,
+          #000000 33.33%,
+          #c69bc4 40%,
+          #ed705a 45%,
+          #efb94f 50%,
+          #b9c8e8 55%,
+          #5f8fe0 60%,
+          transparent 66.67%,
+          transparent 100%
+        );
+        background-size: 300% 100%;
+        background-position: 100% 0;
+        background-repeat: no-repeat;
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        opacity: 0;
+        pointer-events: none;
+        filter: blur(0.6px);
+        will-change: background-position, filter;
       }
 
       .nav-status {
@@ -323,8 +351,12 @@
         white-space: normal;
       }
 
-      .bio-copy .contact-line span {
+      .bio-copy .contact-line > span {
         color: var(--muted);
+      }
+
+      .bio-copy a:hover {
+        text-decoration: none;
       }
 
       .contact-divider {
@@ -611,6 +643,22 @@
       }
 
       @media (hover: hover) and (pointer: fine) {
+        .nav-item:not(.nav-item--disabled):hover .interactive-label,
+        .nav-item:focus-visible .interactive-label,
+        .bio-copy a:hover .interactive-label,
+        .bio-copy a:focus-visible .interactive-label {
+          font-weight: 450;
+          transform: scale(1.04);
+        }
+
+        .nav-item:not(.nav-item--disabled):hover .interactive-label-gradient,
+        .nav-item:focus-visible .interactive-label-gradient,
+        .bio-copy a:hover .interactive-label-gradient,
+        .bio-copy a:focus-visible .interactive-label-gradient {
+          opacity: 0.94;
+          animation: nav-gradient-sweep 600ms cubic-bezier(0.4, 0, 0.2, 1) both;
+        }
+
         .next-page-link:hover {
           box-shadow: inset 0 0 0 1px #e5e5e5;
           transform: scale(1.02);
@@ -618,6 +666,25 @@
 
         .next-page-link:hover .next-page-action {
           background: #e8e8e8;
+        }
+      }
+
+      .nav-item:not(.nav-item--disabled):active .interactive-label,
+      .bio-copy a:active .interactive-label {
+        transform: scale(0.96);
+        transition-duration: 90ms;
+        transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+      }
+
+      @keyframes nav-gradient-sweep {
+        from {
+          background-position: 100% 0;
+          filter: blur(0.6px);
+        }
+
+        to {
+          background-position: 0 0;
+          filter: blur(0);
         }
       }
 
@@ -898,7 +965,7 @@
         }
 
         .nav-label--mobile {
-          display: inline;
+          display: inline-block;
         }
 
         .nav-item {

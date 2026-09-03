@@ -223,6 +223,28 @@ const NEXT_PAGE_STOP_SETTLE = 45;
 const NEXT_PAGE_COMMIT_DELAY = 100;
 const NEXT_PAGE_RESET_DELAY = 35;
 
+function PortfolioHeader({ selectedId }) {
+  const isPhotography = selectedId === "iceland";
+
+  return (
+    <div className="portfolio-header" data-photography={isPhotography ? "true" : "false"}>
+      <img className="portrait" src={avatarNick} alt="Nick Pyl" />
+      <span className="portfolio-header-marks" aria-hidden="true">
+        {pageLoop.map((page) => (
+          <span
+            className="portfolio-header-mark"
+            data-active={page.id === selectedId ? "true" : "false"}
+            data-page={page.id}
+            key={page.id}
+          >
+            <img src={page.thumbnail} alt="" />
+          </span>
+        ))}
+      </span>
+    </div>
+  );
+}
+
 function getRouteSectionId() {
   if (typeof window === "undefined") {
     return DEFAULT_SECTION_ID;
@@ -1758,7 +1780,7 @@ function App() {
   return (
     <div className="portfolio-shell">
       <aside className="sidebar">
-        <img className="portrait" src={avatarNick} alt="Nick Pyl" />
+        <PortfolioHeader selectedId={selectedId} />
         <PortfolioNav selectedId={selectedId} onSelect={handleSelect} />
         <BioBlock />
       </aside>

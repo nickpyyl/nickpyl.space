@@ -213,6 +213,14 @@ const pageLoop = [
   { id: "fuse-wallet", label: "Fuse Wallet", thumbnail: nextPageFuse },
   { id: "iceland", label: "Photography", thumbnail: nextPagePhotography },
 ];
+const NEXT_PAGE_WHEEL_THRESHOLD = 560;
+const NEXT_PAGE_TOUCH_THRESHOLD = 180;
+const NEXT_PAGE_MAX_WHEEL_STEP = 60;
+const NEXT_PAGE_FIRST_SCROLL_HINT = 0.35;
+const NEXT_PAGE_HINT_DURATION = 355;
+const NEXT_PAGE_STOP_SETTLE = 45;
+const NEXT_PAGE_COMMIT_DELAY = 100;
+const NEXT_PAGE_RESET_DELAY = 35;
 
 function getRouteSectionId() {
   if (typeof window === "undefined") {
@@ -336,6 +344,245 @@ function BioBlock() {
 function NextPageLink({ currentId, onSelect }) {
   const currentIndex = pageLoop.findIndex((page) => page.id === currentId);
   const nextPage = pageLoop[(currentIndex + 1) % pageLoop.length];
+  const buttonRef = useRef(null);
+  const progressRef = useRef(0);
+  const arrivalLockedRef = useRef(true);
+  const hintShownRef = useRef(false);
+  const visualFrameRef = useRef(null);
+  const hintTimerRef = useRef(null);
+  const stopTimerRef = useRef(null);
+  const resetTimerRef = useRef(null);
+  const commitTimerRef = useRef(null);
+  const touchStartRef = useRef(null);
+  const touchProgressRef = useRef(0);
+  useEffect(() => {
+    const button = buttonRef.current;
+    const contentPane = button?.closest(".content-pane");
+
+    if (!button || !contentPane || !nextPage) {
+      return undefined;
+    }
+
+    const mobileQuery = window.matchMedia("(max-width: 960px)");
+    let committed = false;
+    let commitScheduled = false;
+
+    arrivalLockedRef.current = true;
+
+    function getScrollElement() {
+      return mobileQuery.matches ? document.scrollingElement : contentPane;
+    }
+
+    function isAtBottom() {
+      const scrollElement = getScrollElement();
+
+      if (!scrollElement) {
+        return false;
+      }
+
+      return scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight <= 2;
+    }
+
+    function setProgress(nextProgress) {
+      const clampedProgress = Math.min(1, Math.max(0, nextProgress));
+      progressRef.current = clampedProgress;
+      window.cancelAnimationFrame(visualFrameRef.current);
+      visualFrameRef.current = window.requestAnimationFrame(() => {
+        const pullTransform =
+          clampedProgress > 0
+            ? `translate3d(0, ${-8 * clampedProgress}px, 0) scale(${1 + 0.02 * clampedProgress})`
+            : "";
+
+        button.dataset.hinting = "false";
+        button.dataset.pulling = clampedProgress > 0 ? "true" : "false";
+        button.style.setProperty("--next-page-progress", String(clampedProgress));
+        button.style.transform = pullTransform;
+      });
+      return clampedProgress;
+    }
+
+    function showFirstScrollHint() {
+      if (hintShownRef.current) {
+        return;
+      }
+
+      hintShownRef.current = true;
+      window.clearTimeout(hintTimerRef.current);
+      button.style.setProperty("--next-page-hint", String(NEXT_PAGE_FIRST_SCROLL_HINT));
+      button.dataset.hinting = "true";
+      hintTimerRef.current = window.setTimeout(() => {
+        button.dataset.hinting = "false";
+      }, NEXT_PAGE_HINT_DURATION);
+    }
+
+    function clearResetTimer() {
+      window.clearTimeout(resetTimerRef.current);
+    }
+
+    function scheduleStopRelease() {
+      window.clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = window.setTimeout(() => {
+        arrivalLockedRef.current = false;
+      }, NEXT_PAGE_STOP_SETTLE);
+    }
+
+    function resetProgress(delay = 0) {
+      clearResetTimer();
+      resetTimerRef.current = window.setTimeout(() => setProgress(0), delay);
+    }
+
+    function cancelCommit() {
+      if (committed) {
+        return;
+      }
+
+      window.clearTimeout(commitTimerRef.current);
+      commitScheduled = false;
+    }
+
+    function commitNavigation() {
+      if (committed || commitScheduled) {
+        return;
+      }
+
+      commitScheduled = true;
+      clearResetTimer();
+      setProgress(1);
+      commitTimerRef.current = window.setTimeout(() => {
+        committed = true;
+        onSelect(nextPage.id);
+      }, NEXT_PAGE_COMMIT_DELAY);
+    }
+
+    function normalizeWheelDelta(event) {
+      if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
+        return event.deltaY * 16;
+      }
+
+      if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+        return event.deltaY * window.innerHeight;
+      }
+
+      return event.deltaY;
+    }
+
+    function handleWheel(event) {
+      if (committed) {
+        return;
+      }
+
+      const delta = normalizeWheelDelta(event);
+      const atBottom = isAtBottom();
+
+      if (delta > 0 && atBottom) {
+        event.preventDefault();
+
+        if (arrivalLockedRef.current) {
+          showFirstScrollHint();
+          scheduleStopRelease();
+          return;
+        }
+
+        clearResetTimer();
+        const wheelStep = Math.min(delta, NEXT_PAGE_MAX_WHEEL_STEP);
+        const nextProgress = setProgress(
+          progressRef.current + wheelStep / NEXT_PAGE_WHEEL_THRESHOLD,
+        );
+
+        if (nextProgress >= 1) {
+          commitNavigation();
+        } else {
+          resetProgress(NEXT_PAGE_RESET_DELAY);
+        }
+      } else if (delta < 0 && progressRef.current > 0) {
+        cancelCommit();
+        clearResetTimer();
+        setProgress(0);
+        arrivalLockedRef.current = true;
+        hintShownRef.current = false;
+      } else if (!atBottom && progressRef.current > 0) {
+        cancelCommit();
+        resetProgress();
+      }
+    }
+
+    function handleScroll() {
+      if (isAtBottom()) {
+        scheduleStopRelease();
+      } else {
+        window.clearTimeout(stopTimerRef.current);
+        arrivalLockedRef.current = true;
+        hintShownRef.current = false;
+      }
+
+      if (!isAtBottom() && progressRef.current > 0) {
+        cancelCommit();
+        resetProgress();
+      }
+    }
+
+    function handleTouchStart(event) {
+      if (committed || event.touches.length !== 1 || !isAtBottom()) {
+        touchStartRef.current = null;
+        return;
+      }
+
+      clearResetTimer();
+      touchStartRef.current = event.touches[0].clientY;
+      touchProgressRef.current = progressRef.current;
+    }
+
+    function handleTouchMove(event) {
+      if (committed || touchStartRef.current === null || event.touches.length !== 1) {
+        return;
+      }
+
+      const pullDistance = touchStartRef.current - event.touches[0].clientY;
+      const nextProgress = touchProgressRef.current + pullDistance / NEXT_PAGE_TOUCH_THRESHOLD;
+
+      if (nextProgress > 0 || progressRef.current > 0) {
+        event.preventDefault();
+        setProgress(nextProgress);
+      }
+    }
+
+    function handleTouchEnd() {
+      if (touchStartRef.current === null || committed) {
+        return;
+      }
+
+      touchStartRef.current = null;
+
+      if (progressRef.current >= 1) {
+        commitNavigation();
+      } else {
+        resetProgress(NEXT_PAGE_RESET_DELAY);
+      }
+    }
+
+    const wheelTarget = mobileQuery.matches ? window : contentPane;
+    const scrollTarget = mobileQuery.matches ? window : contentPane;
+    wheelTarget.addEventListener("wheel", handleWheel, { passive: false });
+    scrollTarget.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+
+    return () => {
+      wheelTarget.removeEventListener("wheel", handleWheel);
+      scrollTarget.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", handleTouchEnd);
+      window.cancelAnimationFrame(visualFrameRef.current);
+      window.clearTimeout(hintTimerRef.current);
+      window.clearTimeout(stopTimerRef.current);
+      window.clearTimeout(resetTimerRef.current);
+      window.clearTimeout(commitTimerRef.current);
+    };
+  }, [nextPage, onSelect]);
 
   if (currentIndex === -1 || !nextPage) {
     return null;
@@ -343,9 +590,13 @@ function NextPageLink({ currentId, onSelect }) {
 
   return (
     <button
+      ref={buttonRef}
       className="next-page-link"
       type="button"
       onClick={() => onSelect(nextPage.id)}
+      data-pulling="false"
+      data-hinting="false"
+      style={{ "--next-page-progress": 0, "--next-page-hint": NEXT_PAGE_FIRST_SCROLL_HINT }}
       aria-label={`Next page: ${nextPage.label}`}
     >
       <span className="next-page-content">

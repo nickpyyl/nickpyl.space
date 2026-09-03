@@ -2,6 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import avatarNick from "../assets/avatar-nick-small.png";
 import signatureNew from "../assets/signature-new-small.png";
+import nextPageChevron from "../assets/icon-chevron-right-small.svg";
+import nextPageExplorations from "../assets/next-page-explorations.png";
+import nextPageFuse from "../assets/next-page-fuse.svg";
+import nextPagePhotography from "../assets/next-page-photography.png";
 import shotVintageCar from "../assets/optimized/shots-000032420024.webp";
 import shotWhiteFenceLandscape from "../assets/optimized/shots-000041000002.webp";
 import shotHallwayWindow from "../assets/optimized/shots-000041000004.webp";
@@ -204,6 +208,11 @@ const content = {
 };
 
 const DEFAULT_SECTION_ID = "explorations";
+const pageLoop = [
+  { id: "explorations", label: "Explorations", thumbnail: nextPageExplorations },
+  { id: "fuse-wallet", label: "Fuse Wallet", thumbnail: nextPageFuse },
+  { id: "iceland", label: "Photography", thumbnail: nextPagePhotography },
+];
 
 function getRouteSectionId() {
   if (typeof window === "undefined") {
@@ -324,7 +333,35 @@ function BioBlock() {
   );
 }
 
-function ContentPane({ selectedId, transitionKey = 0, transitionPhase = "idle" }) {
+function NextPageLink({ currentId, onSelect }) {
+  const currentIndex = pageLoop.findIndex((page) => page.id === currentId);
+  const nextPage = pageLoop[(currentIndex + 1) % pageLoop.length];
+
+  if (currentIndex === -1 || !nextPage) {
+    return null;
+  }
+
+  return (
+    <button
+      className="next-page-link"
+      type="button"
+      onClick={() => onSelect(nextPage.id)}
+      aria-label={`Next page: ${nextPage.label}`}
+    >
+      <span className="next-page-content">
+        <span className="next-page-thumbnail">
+          <img src={nextPage.thumbnail} alt="" />
+        </span>
+        <span className="next-page-destination">{nextPage.label}</span>
+      </span>
+      <span className="next-page-action" aria-hidden="true">
+        <img src={nextPageChevron} alt="" />
+      </span>
+    </button>
+  );
+}
+
+function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase = "idle" }) {
   const selectedContent = content[selectedId] ?? content.iceland;
   const [activeMediaIndex, setActiveMediaIndex] = useState(null);
   const [activeVideoElement, setActiveVideoElement] = useState(null);
@@ -403,6 +440,7 @@ function ContentPane({ selectedId, transitionKey = 0, transitionPhase = "idle" }
   if (selectedContent.type === "photography") {
     return (
       <PhotographyPane
+        onSelect={onSelect}
         selectedContent={selectedContent}
         selectedId={selectedId}
         transitionKey={transitionKey}
@@ -659,6 +697,7 @@ function ContentPane({ selectedId, transitionKey = 0, transitionPhase = "idle" }
                 <img className="detail-image" src={image.src} alt={image.alt} key={image.alt} />
               ))
             )}
+            <NextPageLink currentId={selectedId} onSelect={onSelect} />
           </section>
         </div>
       </div>
@@ -684,7 +723,7 @@ function ContentPane({ selectedId, transitionKey = 0, transitionPhase = "idle" }
   );
 }
 
-function PhotographyPane({ selectedContent, selectedId, transitionKey, transitionPhase }) {
+function PhotographyPane({ onSelect, selectedContent, selectedId, transitionKey, transitionPhase }) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(null);
   const [activeElement, setActiveElement] = useState(null);
   const [hiddenMediaIndexes, setHiddenMediaIndexes] = useState([]);
@@ -959,6 +998,7 @@ function PhotographyPane({ selectedContent, selectedId, transitionKey, transitio
               />
             </button>
           ))}
+          <NextPageLink currentId={selectedId} onSelect={onSelect} />
         </section>
       </div>
       {activeMediaIndex !== null ? (
@@ -1332,6 +1372,12 @@ function App() {
     };
   }, []);
 
+  useLayoutEffect(() => {
+    if (window.matchMedia("(max-width: 960px)").matches) {
+      window.scrollTo({ left: 0, top: 0, behavior: "auto" });
+    }
+  }, [displayedId]);
+
   function setDisplayedContent(nextId) {
     displayedIdRef.current = nextId;
     setDisplayedId(nextId);
@@ -1378,6 +1424,7 @@ function App() {
       </aside>
 
       <ContentPane
+        onSelect={handleSelect}
         selectedId={displayedId}
         transitionKey={pageTransitionKey}
         transitionPhase={pageTransitionPhase}

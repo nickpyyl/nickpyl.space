@@ -59,8 +59,8 @@ import explorationMedia18 from "../assets/explorations-media/exploration-18.mp4"
 
 const MEDIA_TRANSITION_MS = 260;
 const MEDIA_SWAP_MS = 220;
-const PAGE_EXIT_MS = 160;
-const PAGE_ENTER_MS = 280;
+const PAGE_EXIT_MS = 90;
+const PAGE_ENTER_MS = 180;
 const identityTransform = { scaleX: 1, scaleY: 1, x: 0, y: 0 };
 
 const portfolioSections = [
@@ -95,6 +95,8 @@ const content = {
       {
         type: "image",
         src: fuseStill03,
+        width: 1600,
+        height: 1600,
         alt: "Fuse app icon on iPhone home screen",
         description: "Fuse Plus app icon",
       },
@@ -113,6 +115,8 @@ const content = {
       {
         type: "image",
         src: fuseStill02,
+        width: 1600,
+        height: 1040,
         alt: "Fuse Plus phone render",
         description: "Fuse Plus membership",
       },
@@ -143,6 +147,8 @@ const content = {
       {
         type: "image",
         src: fuseStill04,
+        width: 1600,
+        height: 1246,
         alt: "Fuse card render",
         description: "Fuse Cards design",
       },
@@ -173,18 +179,24 @@ const content = {
       {
         type: "image",
         src: fuseStill05,
+        width: 2163,
+        height: 1407,
         alt: "Fuse Wallet receive flow and virtual bank account screens",
         description: "Receive Fiat screens",
       },
       {
         type: "image",
         src: fuseStill06,
+        width: 2400,
+        height: 1560,
         alt: "Fuse Wallet card, cash, investments, and earn screens",
         description: "Accounts System",
       },
       {
         type: "image",
         src: fuseStill07,
+        width: 2800,
+        height: 2800,
         alt: "Fuse Wallet Device Key security screen",
         description: "Onboarding part",
       },
@@ -328,21 +340,21 @@ const content = {
   iceland: {
     type: "photography",
     images: [
-      { src: selectedAmsterdamHouses, alt: "Amsterdam canal houses with red doors and bicycles" },
-      { src: shotWhiteFenceLandscape, alt: "White fence in front of a rocky green landscape" },
-      { src: shotTidalFlats, alt: "Tidal flats with mountains in the distance" },
-      { src: selectedIcelandHouse, alt: "Light-colored Icelandic house beneath a blue sky" },
-      { src: shotRockyHills, alt: "Rocky green hills under cloudy sky" },
-      { src: shotFenceBlueSky, alt: "White fence below a wide blue sky" },
-      { src: selectedIcelandStairs, alt: "Stairs and railings outside a corrugated Icelandic house" },
-      { src: shotWildflowerHillside, alt: "Grassy hillside with wildflowers" },
-      { src: shotHallwayWindow, alt: "Dim hallway with a bright window at the end" },
-      { src: selectedIcelandWindow, alt: "Cloud-covered Icelandic landscape seen through a car window" },
-      { src: shotWhiteVehicle, alt: "White vehicle parked beside a greenhouse" },
-      { src: shotFieldCarHorses, alt: "Silver car and horses in a grassy field" },
-      { src: shotBlueCarSheep, alt: "Blue car framing sheep in the distance" },
-      { src: shotSailboatDeck, alt: "Sailboat deck with a blue sail cover" },
-      { src: shotVintageCar, alt: "Vintage car parked in a shaded residential street" },
+      { src: selectedAmsterdamHouses, width: 1400, height: 928, alt: "Amsterdam canal houses with red doors and bicycles" },
+      { src: shotWhiteFenceLandscape, width: 2200, height: 1459, alt: "White fence in front of a rocky green landscape" },
+      { src: shotTidalFlats, width: 2200, height: 1458, alt: "Tidal flats with mountains in the distance" },
+      { src: selectedIcelandHouse, width: 1400, height: 928, alt: "Light-colored Icelandic house beneath a blue sky" },
+      { src: shotRockyHills, width: 2200, height: 1459, alt: "Rocky green hills under cloudy sky" },
+      { src: shotFenceBlueSky, width: 1459, height: 2200, alt: "White fence below a wide blue sky" },
+      { src: selectedIcelandStairs, width: 928, height: 1400, alt: "Stairs and railings outside a corrugated Icelandic house" },
+      { src: shotWildflowerHillside, width: 2200, height: 1459, alt: "Grassy hillside with wildflowers" },
+      { src: shotHallwayWindow, width: 1459, height: 2200, alt: "Dim hallway with a bright window at the end" },
+      { src: selectedIcelandWindow, width: 1400, height: 928, alt: "Cloud-covered Icelandic landscape seen through a car window" },
+      { src: shotWhiteVehicle, width: 1459, height: 2200, alt: "White vehicle parked beside a greenhouse" },
+      { src: shotFieldCarHorses, width: 2200, height: 1459, alt: "Silver car and horses in a grassy field" },
+      { src: shotBlueCarSheep, width: 2200, height: 1459, alt: "Blue car framing sheep in the distance" },
+      { src: shotSailboatDeck, width: 2200, height: 1459, alt: "Sailboat deck with a blue sail cover" },
+      { src: shotVintageCar, width: 2200, height: 1459, alt: "Vintage car parked in a shaded residential street" },
     ].map((image, index, images) => ({
       ...image,
       description:
@@ -1217,6 +1229,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
                     {column.map(({ item, index }) => (
                       <MediaCard
                         isHidden={hiddenMediaIndexes.includes(index)}
+                        priority={index < 2}
                         item={item}
                         key={item.src}
                         onClick={(event) => openMedia(index, event.currentTarget)}
@@ -1527,6 +1540,8 @@ function PhotographyPane({ onSelect, selectedContent, selectedId, transitionKey,
             >
               <img
                 src={image.src}
+                width={image.width}
+                height={image.height}
                 alt={image.alt}
                 decoding="async"
                 fetchPriority={index === 0 ? "high" : "auto"}
@@ -1560,7 +1575,7 @@ function PhotographyPane({ onSelect, selectedContent, selectedId, transitionKey,
   );
 }
 
-function MediaCard({ isHidden, item, onClick, refCallback }) {
+function MediaCard({ isHidden, item, onClick, priority, refCallback }) {
   return (
     <button
       className="work-media-card"
@@ -1572,18 +1587,27 @@ function MediaCard({ isHidden, item, onClick, refCallback }) {
       aria-label={item.alt}
     >
       {item.type === "image" ? (
-        <img className="work-image" src={item.src} alt={item.alt} loading="lazy" />
+        <img
+          className="work-image"
+          src={item.src}
+          width={item.width}
+          height={item.height}
+          alt={item.alt}
+          decoding="async"
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
+        />
       ) : (
-        <WorkVideo item={item} />
+        <WorkVideo item={item} priority={priority} />
       )}
     </button>
   );
 }
 
-function WorkVideo({ item }) {
+function WorkVideo({ item, priority }) {
   const videoRef = useRef(null);
   const [isNearViewport, setIsNearViewport] = useState(false);
-  const [shouldLoad, setShouldLoad] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(priority);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -1957,6 +1981,12 @@ function App() {
     window.clearTimeout(pageTransitionSettleTimerRef.current);
 
     if (nextId === displayedIdRef.current) {
+      setPageTransitionPhase("idle");
+      return;
+    }
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setDisplayedContent(nextId);
       setPageTransitionPhase("idle");
       return;
     }

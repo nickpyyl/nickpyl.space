@@ -418,33 +418,24 @@
         display: flex;
         justify-content: center;
         opacity: 1;
-        filter: blur(0);
-        transform: translateZ(0);
-        transition:
-          opacity 160ms cubic-bezier(0.4, 0, 1, 1),
-          filter 160ms cubic-bezier(0.4, 0, 1, 1);
-        backface-visibility: hidden;
-        will-change: opacity, filter;
+        transition: opacity 90ms ease-out;
       }
 
       .content-pane--leaving .content-motion {
         opacity: 0;
-        filter: blur(3px);
       }
 
       .content-pane--entering .content-motion {
-        animation: content-enter 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: content-enter 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       @keyframes content-enter {
         from {
           opacity: 0;
-          filter: blur(3px);
         }
 
         to {
           opacity: 1;
-          filter: blur(0);
         }
       }
 
@@ -768,7 +759,6 @@
         display: block;
         transform: scale(1);
         transition: transform 240ms cubic-bezier(0.22, 0.8, 0.2, 1);
-        will-change: transform;
       }
 
       .work-video {
@@ -928,6 +918,8 @@
         position: absolute;
         inset: 0;
         display: block;
+        /* Reparented media must not receive clicks through its original React grid owner. */
+        pointer-events: none;
         background: #f7f7f7;
       }
 

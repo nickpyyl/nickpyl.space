@@ -59,8 +59,8 @@ import explorationMedia18 from "../assets/explorations-media/exploration-18.mp4"
 
 const MEDIA_TRANSITION_MS = 260;
 const MEDIA_SWAP_MS = 220;
-const PAGE_EXIT_MS = 90;
-const PAGE_ENTER_MS = 180;
+const PAGE_EXIT_MS = 280;
+const PAGE_ENTER_MS = 520;
 const identityTransform = { scaleX: 1, scaleY: 1, x: 0, y: 0 };
 
 const portfolioSections = [
@@ -674,7 +674,14 @@ function NextPageLink({ currentId, onSelect }) {
     }
 
     function handleWheel(event) {
-      if (committed) {
+      if (
+        committed ||
+        event.defaultPrevented ||
+        event.ctrlKey ||
+        event.metaKey ||
+        Math.abs(event.deltaX) > Math.abs(event.deltaY) ||
+        document.querySelector(".media-viewer")
+      ) {
         return;
       }
 
@@ -710,6 +717,12 @@ function NextPageLink({ currentId, onSelect }) {
       } else if (!atBottom && progressRef.current > 0) {
         cancelCommit();
         resetProgress();
+      }
+
+      // The fixed sidebar and page gutters share the content pane's scroll area.
+      if (!mobileQuery.matches && !contentPane.contains(event.target) && !event.defaultPrevented) {
+        event.preventDefault();
+        contentPane.scrollBy({ top: delta, behavior: "instant" });
       }
     }
 
@@ -852,7 +865,7 @@ function NextPageLink({ currentId, onSelect }) {
       }
     }
 
-    const wheelTarget = mobileQuery.matches ? window : contentPane;
+    const wheelTarget = window;
     const scrollTarget = mobileQuery.matches ? window : contentPane;
     wheelTarget.addEventListener("wheel", handleWheel, { passive: false });
     scrollTarget.addEventListener("scroll", handleScroll, { passive: true });

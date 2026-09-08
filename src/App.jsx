@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { DEFAULT_SECTION_ID, resolveSectionId, sectionPaths } from "./routes.js";
 import avatarNick from "../assets/avatar-nick-small.png";
 import signatureNew from "../assets/signature-new-small.png";
 import nextPageChevron from "../assets/icon-chevron-right-small.svg";
@@ -91,30 +92,102 @@ const content = {
     title: "Fuse Wallet",
     description: "",
     media: [
-      { type: "image", src: fuseStill03, alt: "Fuse app icon on iPhone home screen" },
-      { type: "video", src: fuseMedia01, alt: "Fuse Wallet interaction video 1" },
-      { type: "video", src: fuseMedia02, alt: "Fuse Wallet interaction video 2" },
-      { type: "image", src: fuseStill02, alt: "Fuse Plus phone render" },
-      { type: "video", src: fuseMedia03, alt: "Fuse Wallet interaction video 3" },
-      { type: "video", src: fuseMedia04, alt: "Fuse Wallet interaction video 4" },
-      { type: "video", src: fuseMedia05, alt: "Fuse Wallet interaction video 5" },
-      { type: "video", src: fuseMedia06, alt: "Fuse Wallet interaction video 6" },
-      { type: "image", src: fuseStill04, alt: "Fuse card render" },
-      { type: "video", src: fuseMedia07, alt: "Fuse Wallet interaction video 7" },
-      { type: "video", src: fuseMedia08, alt: "Fuse Wallet interaction video 8" },
-      { type: "video", src: fuseMedia09, alt: "Fuse Wallet interaction video 9" },
-      { type: "video", src: fuseMedia10, alt: "Fuse Wallet interaction video 10" },
+      {
+        type: "image",
+        src: fuseStill03,
+        alt: "Fuse app icon on iPhone home screen",
+        description: "Fuse Plus app icon",
+      },
+      {
+        type: "video",
+        src: fuseMedia01,
+        alt: "Fuse Wallet interaction video 1",
+        description: "Send with Hide My Wallet",
+      },
+      {
+        type: "video",
+        src: fuseMedia02,
+        alt: "Fuse Wallet interaction video 2",
+        description: "Transaction tracking and expand interaction",
+      },
+      {
+        type: "image",
+        src: fuseStill02,
+        alt: "Fuse Plus phone render",
+        description: "Fuse Plus membership",
+      },
+      {
+        type: "video",
+        src: fuseMedia03,
+        alt: "Fuse Wallet interaction video 3",
+        description: "Delete wallet interaction",
+      },
+      {
+        type: "video",
+        src: fuseMedia04,
+        alt: "Fuse Wallet interaction video 4",
+        description: "Recently redesigned Fuse dashboard",
+      },
+      {
+        type: "video",
+        src: fuseMedia05,
+        alt: "Fuse Wallet interaction video 5",
+        description: "New address input field",
+      },
+      {
+        type: "video",
+        src: fuseMedia06,
+        alt: "Fuse Wallet interaction video 6",
+        description: "Promo cards interaction",
+      },
+      {
+        type: "image",
+        src: fuseStill04,
+        alt: "Fuse card render",
+        description: "Fuse Cards design",
+      },
+      {
+        type: "video",
+        src: fuseMedia07,
+        alt: "Fuse Wallet interaction video 7",
+        description: "Pending verification",
+      },
+      {
+        type: "video",
+        src: fuseMedia08,
+        alt: "Fuse Wallet interaction video 8",
+        description: "Multi-action button interaction",
+      },
+      {
+        type: "video",
+        src: fuseMedia09,
+        alt: "Fuse Wallet interaction video 9",
+        description: "New onboarding flow",
+      },
+      {
+        type: "video",
+        src: fuseMedia10,
+        alt: "Fuse Wallet interaction video 10",
+        description: "Coin breakdown interaction",
+      },
       {
         type: "image",
         src: fuseStill05,
         alt: "Fuse Wallet receive flow and virtual bank account screens",
+        description: "Receive Fiat screens",
       },
       {
         type: "image",
         src: fuseStill06,
         alt: "Fuse Wallet card, cash, investments, and earn screens",
+        description: "Accounts System",
       },
-      { type: "image", src: fuseStill07, alt: "Fuse Wallet Device Key security screen" },
+      {
+        type: "image",
+        src: fuseStill07,
+        alt: "Fuse Wallet Device Key security screen",
+        description: "Onboarding part",
+      },
     ],
   },
   phantom: {
@@ -130,44 +203,118 @@ const content = {
     title: "Explorations",
     description: "",
     media: [
-      { type: "video", src: explorationMedia02, alt: "Exploration interaction video 2" },
-      { type: "video", src: explorationMedia01, alt: "Exploration interaction video 1" },
-      { type: "video", src: explorationMedia03, alt: "Exploration interaction video 3" },
+      {
+        type: "video",
+        src: explorationMedia02,
+        alt: "Exploration interaction video 2",
+        description: "Document signature / mobile version",
+      },
+      {
+        type: "video",
+        src: explorationMedia01,
+        alt: "Exploration interaction video 1",
+        description: "Interaction with my shots from Copenhagen",
+      },
+      {
+        type: "video",
+        src: explorationMedia03,
+        alt: "Exploration interaction video 3",
+        description: "36 exposure cards with film simulation for a more analog feel",
+      },
       {
         type: "video",
         src: explorationMedia04,
         alt: "Exploration interaction video 4",
+        description: "Lights on / shortcut checkbox interaction",
         aspectRatio: "1218 / 720",
       },
-      { type: "video", src: explorationMedia05, alt: "Exploration interaction video 5" },
-      { type: "video", src: explorationMedia06, alt: "Exploration interaction video 6" },
-      { type: "video", src: explorationMedia07, alt: "Exploration interaction video 7" },
-      { type: "video", src: explorationMedia08, alt: "Exploration interaction video 8" },
-      { type: "video", src: explorationMedia09, alt: "Exploration interaction video 9" },
-      { type: "video", src: explorationMedia10, alt: "Exploration interaction video 10" },
+      {
+        type: "video",
+        src: explorationMedia05,
+        alt: "Exploration interaction video 5",
+        description: "Spotify integration in Telegram",
+      },
+      {
+        type: "video",
+        src: explorationMedia06,
+        alt: "Exploration interaction video 6",
+        description: "Reply to a movie review",
+      },
+      {
+        type: "video",
+        src: explorationMedia07,
+        alt: "Exploration interaction video 7",
+        description: "Reminders written by personas that can sound funny, caring, dramatic, or strict",
+      },
+      {
+        type: "video",
+        src: explorationMedia08,
+        alt: "Exploration interaction video 8",
+        description: "A clearer Mail send flow, extending motion into status and undo in the notch",
+      },
+      {
+        type: "video",
+        src: explorationMedia09,
+        alt: "Exploration interaction video 9",
+        description: "Movie review appearance interaction",
+      },
+      {
+        type: "video",
+        src: explorationMedia10,
+        alt: "Exploration interaction video 10",
+        description: "Photos interaction / expand and preview",
+      },
       {
         type: "video",
         src: explorationMedia11,
         alt: "Exploration interaction video 11",
+        description: "Elements / Mail app light theme",
         aspectRatio: "1262 / 1080",
       },
-      { type: "video", src: explorationMedia12, alt: "Exploration interaction video 12" },
+      {
+        type: "video",
+        src: explorationMedia12,
+        alt: "Exploration interaction video 12",
+        description: "Archive selected interaction",
+      },
       {
         type: "video",
         src: explorationMedia13,
         alt: "Exploration interaction video 13",
+        description: "Highlighting a favourite movie moment",
         aspectRatio: "1370 / 1080",
       },
-      { type: "video", src: explorationMedia14, alt: "Exploration interaction video 14" },
-      { type: "video", src: explorationMedia15, alt: "Exploration interaction video 15" },
+      {
+        type: "video",
+        src: explorationMedia14,
+        alt: "Exploration interaction video 14",
+        description: "Exploring features that are missing from other reference apps",
+      },
+      {
+        type: "video",
+        src: explorationMedia15,
+        alt: "Exploration interaction video 15",
+        description: "Rate and review films",
+      },
       {
         type: "video",
         src: explorationMedia16,
         alt: "Exploration interaction video 16",
+        description: "Lights on",
         aspectRatio: "1142 / 1080",
       },
-      { type: "video", src: explorationMedia17, alt: "Exploration interaction video 17" },
-      { type: "video", src: explorationMedia18, alt: "Exploration interaction video 18" },
+      {
+        type: "video",
+        src: explorationMedia17,
+        alt: "Exploration interaction video 17",
+        description: "Task suggestions based on meeting transcription",
+      },
+      {
+        type: "video",
+        src: explorationMedia18,
+        alt: "Exploration interaction video 18",
+        description: "Interactions / folder view and collection fullscreen",
+      },
     ],
     images: [],
   },
@@ -196,7 +343,13 @@ const content = {
       { src: shotBlueCarSheep, alt: "Blue car framing sheep in the distance" },
       { src: shotSailboatDeck, alt: "Sailboat deck with a blue sail cover" },
       { src: shotVintageCar, alt: "Vintage car parked in a shaded residential street" },
-    ],
+    ].map((image, index, images) => ({
+      ...image,
+      description:
+        index === 0 || index === images.length - 1
+          ? "Amsterdam · Leica M6 · Portra 800"
+          : "Iceland · Leica M6 · Portra 400",
+    })),
   },
   nice: {
     type: "note",
@@ -207,7 +360,6 @@ const content = {
   },
 };
 
-const DEFAULT_SECTION_ID = "explorations";
 const pageLoop = [
   { id: "explorations", label: "Explorations", thumbnail: nextPageExplorations },
   { id: "fuse-wallet", label: "Fuse Wallet", thumbnail: nextPageFuse },
@@ -250,19 +402,22 @@ function getRouteSectionId() {
     return DEFAULT_SECTION_ID;
   }
 
-  const sectionId = decodeURIComponent(window.location.hash.replace(/^#\/?/, ""));
-  return content[sectionId] ? sectionId : DEFAULT_SECTION_ID;
+  return resolveSectionId(window.location);
 }
 
-function pushRouteSectionId(sectionId) {
+function pushRouteSectionId(sectionId, replace = false) {
   if (typeof window === "undefined") {
     return;
   }
 
-  const nextHash = `#${encodeURIComponent(sectionId)}`;
+  const nextPath = sectionPaths[sectionId] ?? sectionPaths[DEFAULT_SECTION_ID];
 
-  if (window.location.hash !== nextHash) {
-    window.history.pushState({ sectionId }, "", nextHash);
+  if (window.location.pathname !== nextPath || window.location.hash) {
+    window.history[replace ? "replaceState" : "pushState"](
+      { sectionId },
+      "",
+      `${nextPath}${window.location.search}`,
+    );
   }
 }
 
@@ -801,7 +956,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
         return;
       }
 
-      const targetRect = getCenteredRect(currentRect);
+      const targetRect = getCenteredRect(currentRect, hasMediaCaption(activeMediaIndex));
       setViewerRect(targetRect);
       setViewerTransform(getTransformBetweenRects(currentRect, targetRect));
       setIsViewerSettled(false);
@@ -834,7 +989,6 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
         indexedMedia.filter(({ index }) => index % 2 === 1),
       ]
     : [];
-
   function getSourceRect(sourceElement) {
     const rect = sourceElement.getBoundingClientRect();
 
@@ -846,14 +1000,20 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
     };
   }
 
-  function getCenteredRect(sourceRect) {
+  function hasMediaCaption(index) {
+    const item = selectedContent.media?.[index];
+
+    return Boolean(item?.description);
+  }
+
+  function getCenteredRect(sourceRect, reserveCaption = false) {
     const aspectRatio = sourceRect.width / sourceRect.height;
     const isCompactViewport = window.innerWidth <= 960;
     const maxWidth = isCompactViewport
       ? Math.max(window.innerWidth - 48, 1)
       : Math.min(window.innerWidth * 0.76, 820);
     const maxHeight = isCompactViewport
-      ? Math.max(window.innerHeight - 48, 1)
+      ? Math.max(window.innerHeight - (reserveCaption ? 96 : 48), 1)
       : Math.min(window.innerHeight * 0.8, 920);
     let viewerWidth = Math.min(maxWidth, maxHeight * aspectRatio);
     let viewerHeight = viewerWidth / aspectRatio;
@@ -925,7 +1085,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
     window.clearTimeout(cleanupTimerRef.current);
     const sourceRect = getSourceRect(sourceElement);
     const sourceVideo = sourceElement.querySelector("video");
-    const targetRect = getCenteredRect(sourceRect);
+    const targetRect = getCenteredRect(sourceRect, hasMediaCaption(index));
 
     if (sourceVideo) {
       sourceElement.style.height = `${sourceRect.height}px`;
@@ -957,7 +1117,8 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
 
       if (sourceElement) {
         const sourceRect = getSourceRect(sourceElement);
-        const currentRect = getStageRect() ?? getCenteredRect(sourceRect);
+        const currentRect =
+          getStageRect() ?? getCenteredRect(sourceRect, hasMediaCaption(activeMediaIndex));
 
         setViewerRect(currentRect);
         setViewerTransform(identityTransform);
@@ -1002,7 +1163,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
 
     if (sourceElement) {
       const sourceRect = getSourceRect(sourceElement);
-      const targetRect = getCenteredRect(sourceRect);
+      const targetRect = getCenteredRect(sourceRect, hasMediaCaption(nextIndex));
       const sourceVideo = sourceElement.querySelector("video");
 
       if (sourceVideo) {
@@ -1174,8 +1335,8 @@ function PhotographyPane({ onSelect, selectedContent, selectedId, transitionKey,
       ? Math.max(window.innerWidth - 40, 1)
       : Math.min(window.innerWidth * 0.86, 1000);
     const maxHeight = isCompactViewport
-      ? Math.max(window.innerHeight - 40, 1)
-      : Math.min(window.innerHeight * 0.84, 980);
+      ? Math.max(window.innerHeight - 144, 1)
+      : Math.max(Math.min(window.innerHeight * 0.84, window.innerHeight - 144, 980), 1);
     let viewerWidth = Math.min(maxWidth, maxHeight * aspectRatio);
     let viewerHeight = viewerWidth / aspectRatio;
 
@@ -1670,6 +1831,14 @@ function MediaViewer({
         width: `${rect.width}px`,
       }
     : undefined;
+  const caption = item.description ?? "";
+  const captionStyle = rect
+    ? {
+        left: `${rect.left}px`,
+        top: `${rect.top + rect.height + 18}px`,
+        width: `${rect.width}px`,
+      }
+    : undefined;
 
   return createPortal(
     <div
@@ -1690,7 +1859,7 @@ function MediaViewer({
         style={stageStyle}
         onClick={(event) => {
           event.stopPropagation();
-          onNext();
+          onClose();
         }}
         onTransitionEnd={(event) => {
           if (event.target === event.currentTarget && event.propertyName === "transform") {
@@ -1718,6 +1887,15 @@ function MediaViewer({
           ) : null}
         </span>
       </button>
+      {caption ? (
+        <p
+          className="media-viewer-caption"
+          data-visible={isOpen && isSettled ? "true" : "false"}
+          style={captionStyle}
+        >
+          <span>{caption}</span>
+        </p>
+      ) : null}
     </div>,
     document.body,
   );
@@ -1735,13 +1913,18 @@ function App() {
 
   useEffect(() => {
     function handlePopState() {
-      transitionTo(getRouteSectionId());
+      const nextId = getRouteSectionId();
+      pushRouteSectionId(nextId, true);
+      transitionTo(nextId);
     }
 
+    pushRouteSectionId(getRouteSectionId(), true);
     window.addEventListener("popstate", handlePopState);
+    window.addEventListener("hashchange", handlePopState);
 
     return () => {
       window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("hashchange", handlePopState);
       window.clearTimeout(pageTransitionTimerRef.current);
       window.clearTimeout(pageTransitionSettleTimerRef.current);
     };

@@ -1,5 +1,14 @@
 export const DEFAULT_SECTION_ID = "explorations";
 
+export const sectionTitles = {
+  explorations: "explorations",
+  "fuse-wallet": "fusewallet",
+  iceland: "selected",
+  phantom: "phantom",
+  spacia: "spacia",
+  nice: "nice",
+};
+
 export const sectionPaths = {
   explorations: "/explorations",
   "fuse-wallet": "/fuse",

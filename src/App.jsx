@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { DEFAULT_SECTION_ID, resolveSectionId, sectionPaths } from "./routes.js";
+import { DEFAULT_SECTION_ID, resolveSectionId, sectionPaths, sectionTitles } from "./routes.js";
 import avatarNick from "../assets/avatar-nick-small.png";
 import signatureNew from "../assets/signature-new-small.png";
 import nextPageChevron from "../assets/icon-chevron-right-small.svg";
@@ -1910,6 +1910,10 @@ function App() {
   const pageTransitionSettleTimerRef = useRef(null);
   const selectedIdRef = useRef(selectedId);
   const displayedIdRef = useRef(displayedId);
+
+  useLayoutEffect(() => {
+    document.title = sectionTitles[selectedId] ?? sectionTitles[DEFAULT_SECTION_ID];
+  }, [selectedId]);
 
   useEffect(() => {
     function handlePopState() {

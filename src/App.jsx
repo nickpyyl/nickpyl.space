@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { getMediaSource, waitForMediaReady, warmMedia } from "./media-preload.js";
 import { DEFAULT_SECTION_ID, resolveSectionId, sectionPaths, sectionTitles } from "./routes.js";
 import avatarNick from "../assets/avatar-nick-small.png";
 import signatureNew from "../assets/signature-new-small.png";
@@ -1273,7 +1274,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
               </div>
             ) : (
               selectedContent.images.map((image) => (
-                <img className="detail-image" src={image.src} alt={image.alt} key={image.alt} />
+                <img className="detail-image" src={getMediaSource(image.src)} alt={image.alt} key={image.alt} />
               ))
             )}
             <NextPageLink currentId={selectedId} onSelect={onSelect} />
@@ -1575,7 +1576,7 @@ function PhotographyPane({ onSelect, selectedContent, selectedId, transitionKey,
               aria-label={image.alt}
             >
               <img
-                src={image.src}
+                src={getMediaSource(image.src)}
                 width={image.width}
                 height={image.height}
                 alt={image.alt}
@@ -1625,7 +1626,7 @@ function MediaCard({ isHidden, item, onClick, priority, refCallback }) {
       {item.type === "image" ? (
         <img
           className="work-image"
-          src={item.src}
+          src={getMediaSource(item.src)}
           width={item.width}
           height={item.height}
           alt={item.alt}
@@ -1702,7 +1703,7 @@ function WorkVideo({ item, priority }) {
       muted
       playsInline
       preload={shouldLoad ? "metadata" : "none"}
-      src={shouldLoad ? item.src : undefined}
+      src={shouldLoad ? getMediaSource(item.src) : undefined}
     />
   );
 }
@@ -1784,7 +1785,7 @@ function ViewerMedia({ item, layer, sharedElement = null, startTime }) {
       ref={layerRef}
     >
       {item.type === "image" && !sharedElement ? (
-        <img className="media-viewer-media" src={item.src} alt={item.alt} />
+        <img className="media-viewer-media" src={getMediaSource(item.src)} alt={item.alt} />
       ) : item.type === "video" && !sharedElement ? (
         <video
           ref={videoRef}
@@ -1795,7 +1796,7 @@ function ViewerMedia({ item, layer, sharedElement = null, startTime }) {
           muted
           playsInline
           preload="auto"
-          src={item.src}
+          src={getMediaSource(item.src)}
         />
       ) : null}
     </span>
@@ -2004,6 +2005,52 @@ function App() {
   useLayoutEffect(() => {
     document.title = sectionTitles[selectedId] ?? sectionTitles[DEFAULT_SECTION_ID];
   }, [selectedId]);
+
+  useEffect(() => {
+    // Let foreground media win, including when navigation interrupts warming.
+    if (selectedId !== displayedId) return undefined;
+    const connection = navigator.connection;
+    if (connection?.saveData || ["slow-2g", "2g"].includes(connection?.effectiveType)) return undefined;
+    const controller = new AbortController();
+    const { signal } = controller;
+    let idleId;
+    let timeoutId;
+    const currentMedia = content[displayedId]?.media ?? content[displayedId]?.images ?? [];
+    const elements = [...document.querySelectorAll(
+      ".content-pane .work-media-card > video, .content-pane .work-media-card > img, .content-pane .photo-frame > img",
+    )];
+    const firstMedia = currentMedia.slice(0, 2).map((item) =>
+      elements.find((element) => element.getAttribute("src") === getMediaSource(item.src)),
+    ).filter(Boolean);
+    const currentIndex = pageLoop.findIndex((page) => page.id === displayedId);
+    const otherPages = pageLoop.slice(currentIndex + 1).concat(pageLoop.slice(0, Math.max(0, currentIndex)));
+    // Warm one preview per destination first, then its second item. Limit the
+    // work to the first screen rather than downloading whole video galleries.
+    const previews = otherPages.map((page) => (content[page.id].media ?? content[page.id].images).slice(0, 2));
+    const queue = [0, 1].flatMap((index) => previews.map((items) => items[index]).filter(Boolean));
+    let started = false;
+    function start() {
+      if (started || document.hidden || signal.aborted) return;
+      started = true;
+      Promise.all(firstMedia.map((element) => waitForMediaReady(element, signal))).then(() => {
+        if (signal.aborted) return;
+        const run = () => {
+          if (!document.hidden && !signal.aborted) void warmMedia(queue, signal);
+          else started = false;
+        };
+        if ("requestIdleCallback" in window) idleId = window.requestIdleCallback(run, { timeout: 2000 });
+        else timeoutId = window.setTimeout(run, 300);
+      });
+    }
+    start();
+    document.addEventListener("visibilitychange", start);
+    return () => {
+      controller.abort();
+      if (idleId !== undefined) window.cancelIdleCallback(idleId);
+      window.clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", start);
+    };
+  }, [selectedId, displayedId]);
 
   useEffect(() => {
     function handlePopState() {

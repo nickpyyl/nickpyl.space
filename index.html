@@ -781,13 +781,13 @@
         position: fixed;
         inset: 0;
         z-index: 100001;
+        background-color: rgba(255, 255, 255, 0);
         pointer-events: auto;
         overscroll-behavior: contain;
         touch-action: none;
       }
 
-      .media-viewer::before {
-        content: "";
+      .media-viewer-backdrop {
         position: fixed;
         inset: 0;
         z-index: 0;
@@ -802,14 +802,14 @@
         will-change: opacity, backdrop-filter;
       }
 
-      .media-viewer[data-open="true"]::before {
+      .media-viewer[data-open="true"] > .media-viewer-backdrop {
         -webkit-backdrop-filter: blur(20px) saturate(0.92);
         backdrop-filter: blur(20px) saturate(0.92);
         opacity: 1;
       }
 
-      .media-viewer[data-backdrop="white"]::before,
-      .media-viewer[data-backdrop="white"][data-open="true"]::before {
+      .media-viewer[data-backdrop="white"] > .media-viewer-backdrop,
+      .media-viewer[data-backdrop="white"][data-open="true"] > .media-viewer-backdrop {
         background: #fff;
         -webkit-backdrop-filter: none;
         backdrop-filter: none;
@@ -985,7 +985,7 @@
           transform: none;
         }
 
-        .media-viewer::before,
+        .media-viewer-backdrop,
         .media-viewer,
         .media-viewer-stage,
         .media-viewer-caption,

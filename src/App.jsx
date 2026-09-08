@@ -1850,6 +1850,7 @@ function MediaViewer({
       aria-label={`${title} media`}
       onClick={onClose}
     >
+      <div className="media-viewer-backdrop" aria-hidden="true" />
       <button
         className="media-viewer-stage"
         data-open={isOpen ? "true" : "false"}

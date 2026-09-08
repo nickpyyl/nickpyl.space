@@ -71,8 +71,8 @@ const portfolioSections = [
         label: "Work",
         items: [
           { id: "explorations", label: "Explorations", status: null },
-          { id: "fuse-wallet", label: "Fuse Wallet", status: null },
-          { id: "phantom", label: "Phantom", status: "Soon" },
+          { id: "fuse-wallet", label: "Fuse Wallet", mobileLabel: "Fuse", status: null },
+          { id: "phantom", label: "Phantom", status: "Soon", desktopOnly: true },
         ],
       },
     ],
@@ -447,7 +447,7 @@ function InteractiveLabel({ children, className = "" }) {
 function NavItem({ item, selectedId, onSelect }) {
   if (item.status === "Soon") {
     return (
-      <div className="nav-item nav-item--disabled">
+      <div className={`nav-item nav-item--disabled${item.desktopOnly ? " nav-item--desktop-only" : ""}`}>
         <span>{item.label}</span>
         <span className="nav-status">{item.status}</span>
       </div>
@@ -458,6 +458,7 @@ function NavItem({ item, selectedId, onSelect }) {
     <button
       className="nav-item"
       data-selected={item.id === selectedId}
+      aria-current={item.id === selectedId ? "page" : undefined}
       type="button"
       onClick={() => onSelect(item.id)}
     >
@@ -767,7 +768,9 @@ function NextPageLink({ currentId, onSelect }) {
     function handleTouchStart(event) {
       clearTouchTracking();
 
-      if (committed || !mobileQuery.matches || event.touches.length !== 1) {
+      // Track upward pulls anywhere at the bottom of the mobile page.
+      if (committed || !mobileQuery.matches || event.touches.length !== 1 ||
+          document.querySelector(".media-viewer")) {
         return;
       }
 
@@ -919,7 +922,15 @@ function NextPageLink({ currentId, onSelect }) {
 function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase = "idle" }) {
   const selectedContent = content[selectedId] ?? content.iceland;
   const [activeMediaIndex, setActiveMediaIndex] = useState(null);
-  const [activeVideoElement, setActiveVideoElement] = useState(null);
+  const [activeMediaElement, setActiveMediaElement] = useState(null);
+  const [isSingleColumn, setIsSingleColumn] = useState(() => window.matchMedia("(max-width: 560px)").matches);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 560px)");
+    const updateColumns = () => setIsSingleColumn(query.matches);
+    query.addEventListener("change", updateColumns);
+    return () => query.removeEventListener("change", updateColumns);
+  }, []);
   const [hiddenMediaIndexes, setHiddenMediaIndexes] = useState([]);
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [isViewerSettled, setIsViewerSettled] = useState(false);
@@ -944,7 +955,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
     window.clearTimeout(mediaSwapTimerRef.current);
     window.clearTimeout(sourceRevealTimerRef.current);
     setActiveMediaIndex(null);
-    setActiveVideoElement(null);
+    setActiveMediaElement(null);
     setHiddenMediaIndexes([]);
     setIsViewerOpen(false);
     setIsViewerSettled(false);
@@ -974,7 +985,13 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
       return undefined;
     }
 
+    let viewportWidth = window.innerWidth;
     function handleResize() {
+      // Safari changes viewport height as its bars expand/collapse. Keep the
+      // current transition anchored; only a width change requires new geometry.
+      const nextWidth = window.innerWidth;
+      if (nextWidth <= 960 && nextWidth === viewportWidth) return;
+      viewportWidth = nextWidth;
       const currentRect = getStageRect();
 
       if (!currentRect) {
@@ -1009,7 +1026,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
     ? selectedContent.media.map((item, index) => ({ item, index }))
     : [];
   const mediaColumns = hasMediaGrid
-    ? [
+    ? isSingleColumn ? [indexedMedia] : [
         indexedMedia.filter(({ index }) => index % 2 === 0),
         indexedMedia.filter(({ index }) => index % 2 === 1),
       ]
@@ -1038,7 +1055,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
       ? Math.max(window.innerWidth - 48, 1)
       : Math.min(window.innerWidth * 0.76, 820);
     const maxHeight = isCompactViewport
-      ? Math.max(window.innerHeight - (reserveCaption ? 96 : 48), 1)
+      ? Math.max(window.innerHeight - (reserveCaption ? 240 : 176), 1)
       : Math.min(window.innerHeight * 0.8, 920);
     let viewerWidth = Math.min(maxWidth, maxHeight * aspectRatio);
     let viewerHeight = viewerWidth / aspectRatio;
@@ -1097,7 +1114,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
     window.clearTimeout(mediaSwapTimerRef.current);
     window.clearTimeout(sourceRevealTimerRef.current);
     setActiveMediaIndex(null);
-    setActiveVideoElement(null);
+    setActiveMediaElement(null);
     setHiddenMediaIndexes([]);
     setOutgoingMedia(null);
     setViewerRect(null);
@@ -1109,15 +1126,15 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
     window.cancelAnimationFrame(animationFrameRef.current);
     window.clearTimeout(cleanupTimerRef.current);
     const sourceRect = getSourceRect(sourceElement);
-    const sourceVideo = sourceElement.querySelector("video");
+    const sourceMedia = sourceElement.querySelector("video, img");
     const targetRect = getCenteredRect(sourceRect, hasMediaCaption(index));
 
-    if (sourceVideo) {
+    if (sourceMedia) {
       sourceElement.style.height = `${sourceRect.height}px`;
     }
 
-    setActiveVideoElement(sourceVideo);
-    setMediaStartTime(sourceVideo ? sourceVideo.currentTime : 0);
+    setActiveMediaElement(sourceMedia);
+    setMediaStartTime(sourceMedia instanceof HTMLVideoElement ? sourceMedia.currentTime : 0);
     setOutgoingMedia(null);
     setViewerRect(targetRect);
     setViewerTransform(getTransformBetweenRects(sourceRect, targetRect));
@@ -1180,7 +1197,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
     setOutgoingMedia({
       id: swapIdRef.current,
       item: selectedContent.media[activeMediaIndex],
-      sharedElement: activeVideoElement,
+      sharedElement: activeMediaElement,
       startTime: currentVideo ? currentVideo.currentTime : mediaStartTime,
     });
     setHiddenMediaIndexes((indexes) => Array.from(new Set([...indexes, activeMediaIndex, nextIndex])));
@@ -1189,9 +1206,9 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
     if (sourceElement) {
       const sourceRect = getSourceRect(sourceElement);
       const targetRect = getCenteredRect(sourceRect, hasMediaCaption(nextIndex));
-      const sourceVideo = sourceElement.querySelector("video");
+      const sourceMedia = sourceElement.querySelector("video, img");
 
-      if (sourceVideo) {
+      if (sourceMedia) {
         sourceElement.style.height = `${sourceRect.height}px`;
       }
 
@@ -1199,10 +1216,10 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
       setViewerTransform(getTransformBetweenRects(currentRect ?? sourceRect, targetRect));
       setIsViewerSettled(false);
       settleViewer();
-      setActiveVideoElement(sourceVideo);
-      setMediaStartTime(sourceVideo ? sourceVideo.currentTime : 0);
+      setActiveMediaElement(sourceMedia);
+      setMediaStartTime(sourceMedia instanceof HTMLVideoElement ? sourceMedia.currentTime : 0);
     } else {
-      setActiveVideoElement(null);
+      setActiveMediaElement(null);
       setMediaStartTime(0);
     }
 
@@ -1274,7 +1291,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
           onPrevious={() => stepMedia(-1)}
           outgoingMedia={outgoingMedia}
           rect={viewerRect}
-          sharedElement={activeVideoElement}
+          sharedElement={activeMediaElement}
           stageRef={mediaViewerStageRef}
           startTime={mediaStartTime}
           title={selectedContent.title}
@@ -1325,7 +1342,13 @@ function PhotographyPane({ onSelect, selectedContent, selectedId, transitionKey,
       return undefined;
     }
 
+    let viewportWidth = window.innerWidth;
     function handleResize() {
+      // Safari changes viewport height as its bars expand/collapse. Keep the
+      // current transition anchored; only a width change requires new geometry.
+      const nextWidth = window.innerWidth;
+      if (nextWidth <= 960 && nextWidth === viewportWidth) return;
+      viewportWidth = nextWidth;
       const currentRect = getStageRect();
 
       if (!currentRect) {
@@ -1361,7 +1384,7 @@ function PhotographyPane({ onSelect, selectedContent, selectedId, transitionKey,
       ? Math.max(window.innerWidth - 40, 1)
       : Math.min(window.innerWidth * 0.86, 1000);
     const maxHeight = isCompactViewport
-      ? Math.max(window.innerHeight - 144, 1)
+      ? Math.max(window.innerHeight - 240, 1)
       : Math.max(Math.min(window.innerHeight * 0.84, window.innerHeight - 144, 980), 1);
     let viewerWidth = Math.min(maxWidth, maxHeight * aspectRatio);
     let viewerHeight = viewerWidth / aspectRatio;
@@ -1661,7 +1684,7 @@ function WorkVideo({ item, priority }) {
       return;
     }
 
-    if (isNearViewport) {
+    if (isNearViewport || video.closest(".media-viewer")) {
       setShouldLoad(true);
       video.play().catch(() => {});
       return;
@@ -1716,11 +1739,8 @@ function ViewerMedia({ item, layer, sharedElement = null, startTime }) {
         originalParent.insertBefore(sharedElement, nextSibling);
 
         if (originalParent instanceof HTMLElement) {
-          window.requestAnimationFrame(() => {
-            if (originalParent.isConnected && sharedElement.parentNode === originalParent) {
-              originalParent.style.height = "";
-            }
-          });
+          // Restore natural layout in this same commit, before revealing the card.
+          originalParent.style.height = "";
         }
 
         if (sharedElement instanceof HTMLVideoElement) {
@@ -1801,9 +1821,29 @@ function MediaViewer({
 }) {
   const [isBackdropActive, setIsBackdropActive] = useState(false);
   const backdropFrameRef = useRef(null);
+  const dialogRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const previousFocus = document.activeElement;
+    const root = document.getElementById("root");
+    const previousInert = root.inert;
+    root.inert = true;
+    stageRef.current?.focus({ preventScroll: true });
+    return () => {
+      root.inert = previousInert;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, []);
 
   useEffect(() => {
     function handleKeyDown(event) {
+      if (event.key === "Tab") {
+        const buttons = [...dialogRef.current.querySelectorAll("button")];
+        const index = buttons.indexOf(document.activeElement);
+        const nextIndex = (index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length;
+        event.preventDefault();
+        buttons[nextIndex]?.focus();
+      }
       if (event.key === "Escape") {
         event.preventDefault();
         onClose();
@@ -1824,12 +1864,23 @@ function MediaViewer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose, onNext, onPrevious]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    const isMobile = window.matchMedia("(max-width: 960px)").matches;
     const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
+    // Changing body overflow on iOS also changes the browser bars and viewport.
+    // Block gestures on the overlay instead, leaving the feed's layout intact.
+    if (!isMobile) document.body.style.overflow = "hidden";
+    function preventBackgroundScroll(event) {
+      if (event.touches?.length > 1 || event.ctrlKey) return;
+      event.preventDefault();
+    }
+    dialog.addEventListener("touchmove", preventBackgroundScroll, { passive: false });
+    dialog.addEventListener("wheel", preventBackgroundScroll, { passive: false });
     return () => {
-      document.body.style.overflow = previousOverflow;
+      dialog.removeEventListener("touchmove", preventBackgroundScroll);
+      dialog.removeEventListener("wheel", preventBackgroundScroll);
+      if (!isMobile) document.body.style.overflow = previousOverflow;
     };
   }, []);
 
@@ -1880,6 +1931,7 @@ function MediaViewer({
   return createPortal(
     <div
       className="media-viewer"
+      ref={dialogRef}
       data-backdrop={backdropMode}
       data-open={isBackdropActive ? "true" : "false"}
       role="dialog"
@@ -1904,7 +1956,7 @@ function MediaViewer({
             onCloseComplete();
           }
         }}
-        aria-label={item.alt}
+        aria-label={`Close media viewer: ${item.alt}`}
       >
         <span className="media-viewer-media-shell">
           <ViewerMedia
@@ -2024,8 +2076,10 @@ function App() {
   return (
     <div className="portfolio-shell">
       <aside className="sidebar">
-        <PortfolioHeader selectedId={selectedId} />
-        <PortfolioNav selectedId={selectedId} onSelect={handleSelect} />
+        <div className="navigation-header">
+          <PortfolioHeader selectedId={selectedId} />
+          <PortfolioNav selectedId={selectedId} onSelect={handleSelect} />
+        </div>
         <BioBlock />
       </aside>
 

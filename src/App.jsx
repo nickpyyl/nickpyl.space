@@ -514,7 +514,7 @@ function BioBlock() {
       <img className="signature" src={signatureNew} alt="Nick Pyl signature" />
       <div className="bio-copy">
         <p>
-          Currently Design Lead at{" "}
+          Currently designing at{" "}
           <a href="https://x.com/phantom" target="_blank" rel="noreferrer">
             <InteractiveLabel>Phantom</InteractiveLabel>
           </a>

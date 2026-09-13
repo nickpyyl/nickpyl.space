@@ -341,6 +341,8 @@ const content = {
   iceland: {
     type: "photography",
     images: [
+      { src: shotBlueCarSheep, width: 2200, height: 1459, alt: "Blue car framing sheep in the distance" },
+      { src: shotFieldCarHorses, width: 2200, height: 1459, alt: "Silver car and horses in a grassy field" },
       { src: selectedAmsterdamHouses, width: 1400, height: 928, alt: "Amsterdam canal houses with red doors and bicycles" },
       { src: shotWhiteFenceLandscape, width: 2200, height: 1459, alt: "White fence in front of a rocky green landscape" },
       { src: shotTidalFlats, width: 2200, height: 1458, alt: "Tidal flats with mountains in the distance" },
@@ -352,14 +354,12 @@ const content = {
       { src: shotHallwayWindow, width: 1459, height: 2200, alt: "Dim hallway with a bright window at the end" },
       { src: selectedIcelandWindow, width: 1400, height: 928, alt: "Cloud-covered Icelandic landscape seen through a car window" },
       { src: shotWhiteVehicle, width: 1459, height: 2200, alt: "White vehicle parked beside a greenhouse" },
-      { src: shotFieldCarHorses, width: 2200, height: 1459, alt: "Silver car and horses in a grassy field" },
-      { src: shotBlueCarSheep, width: 2200, height: 1459, alt: "Blue car framing sheep in the distance" },
       { src: shotSailboatDeck, width: 2200, height: 1459, alt: "Sailboat deck with a blue sail cover" },
       { src: shotVintageCar, width: 2200, height: 1459, alt: "Vintage car parked in a shaded residential street" },
-    ].map((image, index, images) => ({
+    ].map((image) => ({
       ...image,
       description:
-        index === 0 || index === images.length - 1
+        image.src === selectedAmsterdamHouses || image.src === shotVintageCar
           ? "Amsterdam · Leica M6 · Portra 800"
           : "Iceland · Leica M6 · Portra 400",
     })),

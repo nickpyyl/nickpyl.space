@@ -1,21 +1,19 @@
-export const DEFAULT_SECTION_ID = "explorations";
+export const DEFAULT_SECTION_ID = "home";
 
 export const sectionTitles = {
-  explorations: "explorations",
+  home: "Nick Pyl",
+  explorations: "Design Experiments",
   "fuse-wallet": "fusewallet",
-  iceland: "selected",
   phantom: "phantom",
   spacia: "spacia",
-  nice: "nice",
 };
 
 export const sectionPaths = {
+  home: "/",
   explorations: "/explorations",
   "fuse-wallet": "/fuse",
-  iceland: "/selected",
   phantom: "/phantom",
   spacia: "/spacia",
-  nice: "/nice",
 };
 
 export function resolveSectionId({ pathname, hash }) {

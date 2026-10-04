@@ -1,13 +1,18 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { getMediaSource, waitForMediaReady, warmMedia } from "./media-preload.js";
+import Home, { navigateFromLink } from "./Home.jsx";
+import SharedObject3D from "./SharedObject3D.jsx";
+import WorkIntro from "./WorkIntro.jsx";
+import "./work.css";
+import InteractiveLabel from "./InteractiveLabel.jsx";
+import { canPreloadMedia, getMediaSource, mediaPreloader } from "./media-preload.js";
+import { observeWorkVideo, refreshVideoPlayback } from "./work-video.js";
 import { DEFAULT_SECTION_ID, resolveSectionId, sectionPaths, sectionTitles } from "./routes.js";
 import avatarNick from "../assets/avatar-nick-small.png";
 import signatureNew from "../assets/signature-new-small.png";
 import nextPageChevron from "../assets/icon-chevron-right-small.svg";
-import nextPageExplorations from "../assets/next-page-explorations.png";
-import nextPageFuse from "../assets/next-page-fuse.svg";
-import nextPagePhotography from "../assets/next-page-photography.png";
+import nextPageExplorations from "../assets/home-disc-ps2.png";
+import nextPageSelectedWork from "../assets/home-redbull-ps2.png";
 import shotVintageCar from "../assets/optimized/shots-000032420024.webp";
 import shotWhiteFenceLandscape from "../assets/optimized/shots-000041000002.webp";
 import shotHallwayWindow from "../assets/optimized/shots-000041000004.webp";
@@ -25,7 +30,6 @@ import selectedIcelandWindow from "../assets/optimized/selected-iceland-window.w
 import selectedIcelandStairs from "../assets/optimized/selected-iceland-stairs.webp";
 import fuseMedia01 from "../assets/fuse-media/fuse-01.mp4";
 import fuseMedia02 from "../assets/fuse-media/fuse-02.mp4";
-import fuseMedia03 from "../assets/fuse-media/fuse-03.mp4";
 import fuseMedia04 from "../assets/fuse-media/fuse-04.mp4";
 import fuseMedia05 from "../assets/fuse-media/fuse-05.mp4";
 import fuseMedia06 from "../assets/fuse-media/fuse-06.mp4";
@@ -33,19 +37,14 @@ import fuseMedia07 from "../assets/fuse-media/fuse-07.mp4";
 import fuseMedia08 from "../assets/fuse-media/fuse-08.mp4";
 import fuseMedia09 from "../assets/fuse-media/fuse-09.mp4";
 import fuseMedia10 from "../assets/fuse-media/fuse-10.mp4";
-import fuseStill02 from "../assets/fuse-media/fuse-still-02.jpg";
-import fuseStill03 from "../assets/fuse-media/fuse-still-03.jpg";
-import fuseStill04 from "../assets/fuse-media/fuse-still-04.jpg";
-import fuseStill05 from "../assets/fuse-media/fuse-still-05.png";
-import fuseStill06 from "../assets/fuse-media/fuse-still-06.png";
-import fuseStill07 from "../assets/fuse-media/fuse-still-07.jpg";
+import fuseCardsDesign from "../assets/fuse-media/fuse-still-04.jpg";
+import fusePlusMembership from "../assets/fuse-media/fuse-plus-membership.png";
 import explorationMedia01 from "../assets/explorations-media/exploration-01.mp4";
 import explorationMedia02 from "../assets/explorations-media/exploration-02.mp4";
 import explorationMedia03 from "../assets/explorations-media/exploration-03.mp4";
 import explorationMedia04 from "../assets/explorations-media/exploration-04.mp4";
 import explorationMedia05 from "../assets/explorations-media/exploration-05.mp4";
 import explorationMedia06 from "../assets/explorations-media/exploration-06.mp4";
-import explorationMedia07 from "../assets/explorations-media/exploration-07.mp4";
 import explorationMedia08 from "../assets/explorations-media/exploration-08.mp4";
 import explorationMedia09 from "../assets/explorations-media/exploration-09.mp4";
 import explorationMedia10 from "../assets/explorations-media/exploration-10.mp4";
@@ -61,8 +60,16 @@ import explorationMedia18 from "../assets/explorations-media/exploration-18.mp4"
 const MEDIA_TRANSITION_MS = 260;
 const MEDIA_SWAP_MS = 220;
 const PAGE_EXIT_MS = 280;
-const PAGE_ENTER_MS = 520;
+// Allow the final staggered element to finish before removing the phase class.
+const PAGE_ENTER_MS = 760;
+const HOME_ENTER_MS = 560;
 const identityTransform = { scaleX: 1, scaleY: 1, x: 0, y: 0 };
+
+function getMediaAspectRatio(item) {
+  if (item.width && item.height) return item.width / item.height;
+  const [width, height] = (item.aspectRatio ?? "1 / 1").split("/").map(Number);
+  return width / height;
+}
 
 const portfolioSections = [
   {
@@ -71,17 +78,11 @@ const portfolioSections = [
       {
         label: "Work",
         items: [
-          { id: "explorations", label: "Explorations", status: null },
+          { id: "explorations", label: "Design Experiments", status: null },
           { id: "fuse-wallet", label: "Fuse Wallet", mobileLabel: "Fuse", status: null },
           { id: "phantom", label: "Phantom", status: "Soon", desktopOnly: true },
         ],
       },
-    ],
-  },
-  {
-    title: "Photography",
-    items: [
-      { id: "iceland", label: "Selected", mobileLabel: "Photography", status: null },
     ],
   },
 ];
@@ -93,114 +94,17 @@ const content = {
     title: "Fuse Wallet",
     description: "",
     media: [
-      {
-        type: "video",
-        src: fuseMedia08,
-        alt: "Fuse Wallet interaction video 8",
-        description: "Multi-action button interaction",
-      },
-      {
-        type: "image",
-        src: fuseStill02,
-        width: 1600,
-        height: 1040,
-        alt: "Fuse Plus phone render",
-        description: "Fuse Plus membership",
-      },
-      {
-        type: "video",
-        src: fuseMedia01,
-        alt: "Fuse Wallet interaction video 1",
-        description: "Send with Hide My Wallet",
-      },
-      {
-        type: "image",
-        src: fuseStill07,
-        width: 2800,
-        height: 2800,
-        alt: "Fuse Wallet Device Key security screen",
-        description: "Onboarding part",
-      },
-      {
-        type: "video",
-        src: fuseMedia03,
-        alt: "Fuse Wallet interaction video 3",
-        description: "Delete wallet interaction",
-      },
-      {
-        type: "video",
-        src: fuseMedia04,
-        alt: "Fuse Wallet interaction video 4",
-        description: "Recently redesigned Fuse dashboard",
-      },
-      {
-        type: "image",
-        src: fuseStill03,
-        width: 1600,
-        height: 1600,
-        alt: "Fuse app icon on iPhone home screen",
-        description: "Fuse Plus app icon",
-      },
-      {
-        type: "video",
-        src: fuseMedia05,
-        alt: "Fuse Wallet interaction video 5",
-        description: "New address input field",
-      },
-      {
-        type: "video",
-        src: fuseMedia06,
-        alt: "Fuse Wallet interaction video 6",
-        description: "Promo cards interaction",
-      },
-      {
-        type: "video",
-        src: fuseMedia07,
-        alt: "Fuse Wallet interaction video 7",
-        description: "Pending verification",
-      },
-      {
-        type: "image",
-        src: fuseStill04,
-        width: 1600,
-        height: 1246,
-        alt: "Fuse card render",
-        description: "Fuse Cards design",
-      },
-      {
-        type: "video",
-        src: fuseMedia09,
-        alt: "Fuse Wallet interaction video 9",
-        description: "New onboarding flow",
-      },
-      {
-        type: "video",
-        src: fuseMedia10,
-        alt: "Fuse Wallet interaction video 10",
-        description: "Coin breakdown interaction",
-      },
-      {
-        type: "image",
-        src: fuseStill05,
-        width: 2163,
-        height: 1407,
-        alt: "Fuse Wallet receive flow and virtual bank account screens",
-        description: "Receive Fiat screens",
-      },
-      {
-        type: "image",
-        src: fuseStill06,
-        width: 2400,
-        height: 1560,
-        alt: "Fuse Wallet card, cash, investments, and earn screens",
-        description: "Accounts System",
-      },
-      {
-        type: "video",
-        src: fuseMedia02,
-        alt: "Fuse Wallet interaction video 2",
-        description: "Transaction tracking and expand interaction",
-      },
+      { type: "video", src: fuseMedia08, alt: "Multi-Action Interaction", description: "Multi-Action Interaction" },
+      { type: "video", src: fuseMedia09, alt: "Onboarding", description: "Onboarding" },
+      { type: "video", src: fuseMedia04, alt: "Home Experience", description: "Home Experience" },
+      { type: "video", src: fuseMedia01, alt: "Send with Hide My Wallet", description: "Send with Hide My Wallet" },
+      { type: "video", src: fuseMedia05, alt: "Address input field", description: "Address input field", aspectRatio: "2156 / 2160" },
+      { type: "video", src: fuseMedia02, alt: "Transaction tracking", description: "Transaction tracking" },
+      { type: "video", src: fuseMedia07, alt: "Pending verification", description: "Pending verification" },
+      { type: "video", src: fuseMedia06, alt: "Promo cards", description: "Promo cards" },
+      { type: "image", src: fusePlusMembership, width: 2080, height: 2080, alt: "Fuse Plus membership on an iPhone", description: "Fuse Plus Membership" },
+      { type: "image", src: fuseCardsDesign, width: 1600, height: 1246, alt: "Fuse Cards design", description: "Fuse Cards design" },
+      { type: "video", src: fuseMedia10, alt: "Coin breakdown", description: "Coin breakdown", aspectRatio: "1082 / 1080" },
     ],
   },
   phantom: {
@@ -213,7 +117,7 @@ const content = {
   explorations: {
     type: "note",
     eyebrow: "Work",
-    title: "Explorations",
+    title: "Design Experiments",
     description: "",
     media: [
       {
@@ -232,13 +136,14 @@ const content = {
         type: "video",
         src: explorationMedia03,
         alt: "Exploration interaction video 3",
-        description: "36 exposure cards with film simulation for a more analog feel",
+        description: "SD cards with film simulation",
+        aspectRatio: "1088 / 1080",
       },
       {
         type: "video",
         src: explorationMedia04,
         alt: "Exploration interaction video 4",
-        description: "Lights on / shortcut checkbox interaction",
+        description: "Shortcut checkbox interaction",
         aspectRatio: "1218 / 720",
       },
       {
@@ -252,18 +157,13 @@ const content = {
         src: explorationMedia06,
         alt: "Exploration interaction video 6",
         description: "Reply to a movie review",
-      },
-      {
-        type: "video",
-        src: explorationMedia07,
-        alt: "Exploration interaction video 7",
-        description: "Reminders written by personas that can sound funny, caring, dramatic, or strict",
+        aspectRatio: "1082 / 1080",
       },
       {
         type: "video",
         src: explorationMedia08,
         alt: "Exploration interaction video 8",
-        description: "A clearer Mail send flow, extending motion into status and undo in the notch",
+        description: "Mail send flow",
       },
       {
         type: "video",
@@ -276,6 +176,7 @@ const content = {
         src: explorationMedia10,
         alt: "Exploration interaction video 10",
         description: "Photos interaction / expand and preview",
+        aspectRatio: "1082 / 1080",
       },
       {
         type: "video",
@@ -301,7 +202,8 @@ const content = {
         type: "video",
         src: explorationMedia14,
         alt: "Exploration interaction video 14",
-        description: "Exploring features that are missing from other reference apps",
+        description: "board customisation",
+        aspectRatio: "1082 / 1080",
       },
       {
         type: "video",
@@ -313,7 +215,7 @@ const content = {
         type: "video",
         src: explorationMedia16,
         alt: "Exploration interaction video 16",
-        description: "Lights on",
+        description: "Signature interaction",
         aspectRatio: "1142 / 1080",
       },
       {
@@ -321,12 +223,13 @@ const content = {
         src: explorationMedia17,
         alt: "Exploration interaction video 17",
         description: "Task suggestions based on meeting transcription",
+        aspectRatio: "1082 / 1080",
       },
       {
         type: "video",
         src: explorationMedia18,
         alt: "Exploration interaction video 18",
-        description: "Interactions / folder view and collection fullscreen",
+        description: "Folder view and collection fullscreen",
       },
     ],
     images: [],
@@ -374,10 +277,17 @@ const content = {
 };
 
 const pageLoop = [
-  { id: "explorations", label: "Explorations", thumbnail: nextPageExplorations },
-  { id: "fuse-wallet", label: "Fuse Wallet", thumbnail: nextPageFuse },
-  { id: "iceland", label: "Photography", thumbnail: nextPagePhotography },
+  { id: "fuse-wallet", label: "Selected work", thumbnail: nextPageSelectedWork },
+  { id: "explorations", label: "Design Experiments", thumbnail: nextPageExplorations },
 ];
+function preloadSection(id) {
+  if (document.hidden || !canPreloadMedia()) return;
+  const videos = content[id]?.media?.filter(item => item.type === "video") ?? [];
+  if (!videos.length) return;
+  mediaPreloader.enqueue(videos.slice(0, 2), { priority: true });
+  mediaPreloader.resume();
+}
+
 const NEXT_PAGE_WHEEL_THRESHOLD = 560;
 const NEXT_PAGE_TOUCH_THRESHOLD = 180;
 const NEXT_PAGE_TOUCH_ACTIVATION = 8;
@@ -432,17 +342,6 @@ function pushRouteSectionId(sectionId, replace = false) {
       `${nextPath}${window.location.search}`,
     );
   }
-}
-
-function InteractiveLabel({ children, className = "" }) {
-  return (
-    <span className={`interactive-label ${className}`.trim()}>
-      <span>{children}</span>
-      <span className="interactive-label-gradient" aria-hidden="true">
-        {children}
-      </span>
-    </span>
-  );
 }
 
 function NavItem({ item, selectedId, onSelect }) {
@@ -546,7 +445,7 @@ function BioBlock() {
   );
 }
 
-function NextPageLink({ currentId, onSelect }) {
+function NextPageLink({ currentId, onSelect, horizontal = false }) {
   const currentIndex = pageLoop.findIndex((page) => page.id === currentId);
   const nextPage = pageLoop[(currentIndex + 1) % pageLoop.length];
   const buttonRef = useRef(null);
@@ -567,6 +466,8 @@ function NextPageLink({ currentId, onSelect }) {
   useEffect(() => {
     const button = buttonRef.current;
     const contentPane = button?.closest(".content-pane");
+    const rail = button?.closest(".work-rail");
+    const track = horizontal ? rail?.querySelector(".work-rail-track") : null;
 
     if (!button || !contentPane || !nextPage) {
       return undefined;
@@ -579,6 +480,7 @@ function NextPageLink({ currentId, onSelect }) {
     arrivalLockedRef.current = true;
 
     function getScrollElement() {
+      if (horizontal) return rail;
       return mobileQuery.matches ? document.scrollingElement : contentPane;
     }
 
@@ -589,7 +491,9 @@ function NextPageLink({ currentId, onSelect }) {
         return false;
       }
 
-      return scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight <= 2;
+      return horizontal
+        ? scrollElement.scrollWidth - scrollElement.scrollLeft - scrollElement.clientWidth <= 2
+        : scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight <= 2;
     }
 
     function setProgress(nextProgress) {
@@ -597,15 +501,22 @@ function NextPageLink({ currentId, onSelect }) {
       progressRef.current = clampedProgress;
       window.cancelAnimationFrame(visualFrameRef.current);
       visualFrameRef.current = window.requestAnimationFrame(() => {
-        const pullTransform =
-          clampedProgress > 0
-            ? `translate3d(0, ${-8 * clampedProgress}px, 0) scale(${1 + 0.02 * clampedProgress})`
-            : "";
-
         button.dataset.hinting = "false";
         button.dataset.pulling = clampedProgress > 0 ? "true" : "false";
         button.style.setProperty("--next-page-progress", String(clampedProgress));
-        button.style.transform = pullTransform;
+        if (track) {
+          // Pull the media, captions and button together, with resistance near the limit.
+          const resistance = (1 - Math.exp(-1.65 * clampedProgress)) / (1 - Math.exp(-1.65));
+          const distance = Math.min(8, rail.clientWidth * 0.02) * resistance;
+          track.dataset.hinting = "false";
+          track.dataset.pulling = clampedProgress > 0 ? "true" : "false";
+          track.style.setProperty("--work-overdrag", `${-distance}px`);
+          button.style.transform = "";
+        } else {
+          button.style.transform = clampedProgress > 0
+            ? `translate3d(0, ${-8 * clampedProgress}px, 0) scale(${1 + 0.02 * clampedProgress})`
+            : "";
+        }
       });
       return clampedProgress;
     }
@@ -619,8 +530,10 @@ function NextPageLink({ currentId, onSelect }) {
       window.clearTimeout(hintTimerRef.current);
       button.style.setProperty("--next-page-hint", String(NEXT_PAGE_FIRST_SCROLL_HINT));
       button.dataset.hinting = "true";
+      if (track) track.dataset.hinting = "true";
       hintTimerRef.current = window.setTimeout(() => {
         button.dataset.hinting = "false";
+        if (track) track.dataset.hinting = "false";
       }, NEXT_PAGE_HINT_DURATION);
     }
 
@@ -664,15 +577,16 @@ function NextPageLink({ currentId, onSelect }) {
     }
 
     function normalizeWheelDelta(event) {
+      const delta = horizontal && Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
       if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) {
-        return event.deltaY * 16;
+        return delta * 16;
       }
 
       if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
-        return event.deltaY * window.innerHeight;
+        return delta * (horizontal ? window.innerWidth : window.innerHeight);
       }
 
-      return event.deltaY;
+      return delta;
     }
 
     function handleWheel(event) {
@@ -681,7 +595,7 @@ function NextPageLink({ currentId, onSelect }) {
         event.defaultPrevented ||
         event.ctrlKey ||
         event.metaKey ||
-        Math.abs(event.deltaX) > Math.abs(event.deltaY) ||
+        (!horizontal && Math.abs(event.deltaX) > Math.abs(event.deltaY)) ||
         document.querySelector(".media-viewer")
       ) {
         return;
@@ -689,6 +603,17 @@ function NextPageLink({ currentId, onSelect }) {
 
       const delta = normalizeWheelDelta(event);
       const atBottom = isAtBottom();
+
+      if (horizontal && !rail.contains(event.target) && Math.abs(event.deltaY) >= Math.abs(event.deltaX) &&
+          contentPane.scrollHeight > contentPane.clientHeight + 2 &&
+          ((delta > 0 && contentPane.scrollTop + contentPane.clientHeight < contentPane.scrollHeight - 2) ||
+           (delta < 0 && contentPane.scrollTop > 0))) return;
+
+      // Vertical wheel movement browses the horizontal work row too.
+      if (horizontal && !(delta > 0 && atBottom)) {
+        event.preventDefault();
+        rail.scrollBy({ left: delta, behavior: "instant" });
+      }
 
       if (delta > 0 && atBottom) {
         event.preventDefault();
@@ -700,7 +625,7 @@ function NextPageLink({ currentId, onSelect }) {
         }
 
         clearResetTimer();
-        const wheelStep = Math.min(delta, NEXT_PAGE_MAX_WHEEL_STEP);
+        const wheelStep = Math.min(delta, horizontal ? NEXT_PAGE_WHEEL_THRESHOLD : NEXT_PAGE_MAX_WHEEL_STEP);
         const nextProgress = setProgress(
           progressRef.current + wheelStep / NEXT_PAGE_WHEEL_THRESHOLD,
         );
@@ -708,7 +633,7 @@ function NextPageLink({ currentId, onSelect }) {
         if (nextProgress >= 1) {
           commitNavigation();
         } else {
-          resetProgress(NEXT_PAGE_RESET_DELAY);
+          resetProgress(horizontal ? 160 : NEXT_PAGE_RESET_DELAY);
         }
       } else if (delta < 0 && progressRef.current > 0) {
         cancelCommit();
@@ -722,7 +647,7 @@ function NextPageLink({ currentId, onSelect }) {
       }
 
       // The fixed sidebar and page gutters share the content pane's scroll area.
-      if (!mobileQuery.matches && !contentPane.contains(event.target) && !event.defaultPrevented) {
+      if (!horizontal && !mobileQuery.matches && !contentPane.contains(event.target) && !event.defaultPrevented) {
         event.preventDefault();
         contentPane.scrollBy({ top: delta, behavior: "instant" });
       }
@@ -732,13 +657,14 @@ function NextPageLink({ currentId, onSelect }) {
       if (isAtBottom()) {
         scheduleStopRelease();
 
-        if (mobileQuery.matches) {
+        if (mobileQuery.matches || horizontal) {
           showFirstScrollHint();
         }
       } else {
         window.clearTimeout(stopTimerRef.current);
         arrivalLockedRef.current = true;
         hintShownRef.current = false;
+        if (track) track.dataset.hinting = "false";
       }
 
       if (!isAtBottom() && progressRef.current > 0) {
@@ -770,7 +696,8 @@ function NextPageLink({ currentId, onSelect }) {
       clearTouchTracking();
 
       // Track upward pulls anywhere at the bottom of the mobile page.
-      if (committed || !mobileQuery.matches || event.touches.length !== 1 ||
+      if (committed || (!horizontal && !mobileQuery.matches) || event.touches.length !== 1 ||
+          (horizontal && !rail.contains(event.target)) ||
           document.querySelector(".media-viewer")) {
         return;
       }
@@ -780,8 +707,8 @@ function NextPageLink({ currentId, onSelect }) {
 
       touchIdRef.current = touch.identifier;
       clearResetTimer();
-      touchStartRef.current = touch.clientY;
-      touchStartXRef.current = touch.clientX;
+      touchStartRef.current = horizontal ? touch.clientX : touch.clientY;
+      touchStartXRef.current = horizontal ? touch.clientY : touch.clientX;
       touchProgressRef.current = progressRef.current;
       touchStartedAtBottomRef.current = startedAtBottom;
 
@@ -801,8 +728,8 @@ function NextPageLink({ currentId, onSelect }) {
         return;
       }
 
-      const pullDistance = touchStartRef.current - touch.clientY;
-      const horizontalDistance = Math.abs(touchStartXRef.current - touch.clientX);
+      const pullDistance = touchStartRef.current - (horizontal ? touch.clientX : touch.clientY);
+      const horizontalDistance = Math.abs(touchStartXRef.current - (horizontal ? touch.clientY : touch.clientX));
 
       if (!touchClaimedRef.current) {
         if (horizontalDistance > Math.max(pullDistance, NEXT_PAGE_TOUCH_ACTIVATION)) {
@@ -870,7 +797,7 @@ function NextPageLink({ currentId, onSelect }) {
     }
 
     const wheelTarget = window;
-    const scrollTarget = mobileQuery.matches ? window : contentPane;
+    const scrollTarget = horizontal ? rail : mobileQuery.matches ? window : contentPane;
     wheelTarget.addEventListener("wheel", handleWheel, { passive: false });
     scrollTarget.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
@@ -889,8 +816,13 @@ function NextPageLink({ currentId, onSelect }) {
       window.clearTimeout(stopTimerRef.current);
       window.clearTimeout(resetTimerRef.current);
       window.clearTimeout(commitTimerRef.current);
+      if (track) {
+        delete track.dataset.pulling;
+        delete track.dataset.hinting;
+        track.style.removeProperty("--work-overdrag");
+      }
     };
-  }, [nextPage, onSelect]);
+  }, [nextPage, onSelect, horizontal]);
 
   if (currentIndex === -1 || !nextPage) {
     return null;
@@ -902,6 +834,8 @@ function NextPageLink({ currentId, onSelect }) {
       className="next-page-link"
       type="button"
       onClick={() => onSelect(nextPage.id)}
+      onPointerEnter={() => preloadSection(nextPage.id)}
+      onFocus={() => preloadSection(nextPage.id)}
       data-pulling="false"
       data-hinting="false"
       style={{ "--next-page-progress": 0, "--next-page-hint": NEXT_PAGE_FIRST_SCROLL_HINT }}
@@ -921,7 +855,8 @@ function NextPageLink({ currentId, onSelect }) {
 }
 
 function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase = "idle" }) {
-  const selectedContent = content[selectedId] ?? content.iceland;
+  const selectedContent = content[selectedId] ?? content["fuse-wallet"];
+  const isWork = selectedId === "fuse-wallet" || selectedId === "explorations";
   const [activeMediaIndex, setActiveMediaIndex] = useState(null);
   const [activeMediaElement, setActiveMediaElement] = useState(null);
   const [isSingleColumn, setIsSingleColumn] = useState(() => window.matchMedia("(max-width: 560px)").matches);
@@ -947,8 +882,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
   const sourceRevealTimerRef = useRef(null);
   const swapIdRef = useRef(0);
   const paneRef = useRef(null);
-  const paneClassName =
-    transitionPhase === "idle" ? "content-pane" : `content-pane content-pane--${transitionPhase}`;
+  const paneClassName = `content-pane${isWork ? " selected-work-page" : ""}${transitionPhase === "idle" ? "" : ` content-pane--${transitionPhase}`}`;
 
   useEffect(() => {
     window.cancelAnimationFrame(animationFrameRef.current);
@@ -1244,9 +1178,31 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
   return (
     <main
       className={paneClassName}
-      aria-label="Selected content"
+      aria-label={isWork ? selectedContent.title : "Selected content"}
       ref={paneRef}
     >
+      {isWork ? (
+        <div className="work-layout" key={`${selectedId}-${transitionKey}`}>
+          <WorkIntro selectedId={selectedId} onSelect={onSelect} />
+          <div className="work-rail" role="region" aria-label={`${selectedContent.title} projects`} tabIndex={0}>
+            <div className="work-rail-track">
+              <div className="work-rail-lead work-rail-lead--object">
+                <button className="work-object-slot object-slot" data-object-slot={selectedId === "fuse-wallet" ? "can" : "disc"} type="button" aria-label={selectedId === "fuse-wallet" ? "Rotate the Red Bull can" : "Rotate the disc"} aria-describedby="work-object-instructions" />
+              </div>
+              {indexedMedia.map(({ item, index }) => (
+                <figure className="work-piece" key={item.src} style={{ "--work-aspect-ratio": getMediaAspectRatio(item), "--page-reveal-delay": `${70 + Math.min(index, 2) * 35}ms` }}>
+                  <MediaCard isHidden={hiddenMediaIndexes.includes(index)} priority={index < 2} item={item}
+                    onClick={event => openMedia(index, event.currentTarget)}
+                    refCallback={element => { mediaCardRefs.current[index] = element; }} />
+                  <figcaption>{item.description}</figcaption>
+                </figure>
+              ))}
+              <div className="work-rail-end"><NextPageLink currentId={selectedId} onSelect={onSelect} horizontal /></div>
+            </div>
+          </div>
+          <span className="home-object-instructions" id="work-object-instructions">Drag or use arrow keys to rotate. Hold Shift to move. Press Escape to return home.</span>
+        </div>
+      ) : (
       <div className="content-motion" key={`${selectedId}-${transitionKey}`}>
         <div className={hasMediaGrid ? "content-stack content-stack--wide" : "content-stack"}>
           <section className={hasMediaGrid ? "work-detail work-detail--media" : "work-detail"}>
@@ -1281,6 +1237,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
           </section>
         </div>
       </div>
+      )}
       {hasMediaGrid && activeMediaIndex !== null ? (
         <MediaViewer
           isOpen={isViewerOpen}
@@ -1643,56 +1600,7 @@ function MediaCard({ isHidden, item, onClick, priority, refCallback }) {
 
 function WorkVideo({ item, priority }) {
   const videoRef = useRef(null);
-  const [isNearViewport, setIsNearViewport] = useState(false);
-  const [shouldLoad, setShouldLoad] = useState(priority);
-
-  useEffect(() => {
-    const video = videoRef.current;
-
-    if (!video) {
-      return undefined;
-    }
-
-    if (!("IntersectionObserver" in window)) {
-      setIsNearViewport(true);
-      setShouldLoad(true);
-      return undefined;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsNearViewport(entry.isIntersecting);
-      },
-      {
-        root: null,
-        rootMargin: "360px 0px",
-        threshold: 0.01,
-      },
-    );
-
-    observer.observe(video);
-
-    return () => {
-      observer.disconnect();
-      video.pause();
-    };
-  }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-
-    if (!video) {
-      return;
-    }
-
-    if (isNearViewport || video.closest(".media-viewer")) {
-      setShouldLoad(true);
-      video.play().catch(() => {});
-      return;
-    }
-
-    video.pause();
-  }, [isNearViewport, shouldLoad]);
+  useEffect(() => observeWorkVideo(videoRef.current, item.src, { priority }), [item.src, priority]);
 
   return (
     <video
@@ -1702,8 +1610,7 @@ function WorkVideo({ item, priority }) {
       loop
       muted
       playsInline
-      preload={shouldLoad ? "metadata" : "none"}
-      src={shouldLoad ? getMediaSource(item.src) : undefined}
+      preload="none"
     />
   );
 }
@@ -1727,7 +1634,7 @@ function ViewerMedia({ item, layer, sharedElement = null, startTime }) {
     sharedElement.className = "media-viewer-media";
 
     if (sharedElement instanceof HTMLVideoElement) {
-      sharedElement.play().catch(() => {});
+      refreshVideoPlayback();
     }
 
     return () => {
@@ -1745,7 +1652,7 @@ function ViewerMedia({ item, layer, sharedElement = null, startTime }) {
         }
 
         if (sharedElement instanceof HTMLVideoElement) {
-          sharedElement.play().catch(() => {});
+          refreshVideoPlayback();
         }
       }
     };
@@ -1829,9 +1736,11 @@ function MediaViewer({
     const root = document.getElementById("root");
     const previousInert = root.inert;
     root.inert = true;
+    refreshVideoPlayback();
     stageRef.current?.focus({ preventScroll: true });
     return () => {
       root.inert = previousInert;
+      refreshVideoPlayback();
       if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };
   }, []);
@@ -1995,7 +1904,9 @@ function MediaViewer({
 function App() {
   const [selectedId, setSelectedId] = useState(() => getRouteSectionId());
   const [displayedId, setDisplayedId] = useState(() => getRouteSectionId());
-  const [pageTransitionPhase, setPageTransitionPhase] = useState("idle");
+  const [pageTransitionPhase, setPageTransitionPhase] = useState(() =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "idle" : "entering",
+  );
   const [pageTransitionKey, setPageTransitionKey] = useState(0);
   const pageTransitionTimerRef = useRef(null);
   const pageTransitionSettleTimerRef = useRef(null);
@@ -2007,50 +1918,44 @@ function App() {
   }, [selectedId]);
 
   useEffect(() => {
-    // Let foreground media win, including when navigation interrupts warming.
-    if (selectedId !== displayedId) return undefined;
-    const connection = navigator.connection;
-    if (connection?.saveData || ["slow-2g", "2g"].includes(connection?.effectiveType)) return undefined;
-    const controller = new AbortController();
-    const { signal } = controller;
+    const pages = pageLoop.map(page => content[page.id].media.filter(item => item.type === "video"));
+    // Interleave destinations: both opening views are ready before deeper clips.
+    const queue = Array.from({ length: Math.max(...pages.map(items => items.length)) }, (_, index) =>
+      pages.map(items => items[index]).filter(Boolean),
+    ).flat();
+    mediaPreloader.enqueue(queue);
+    let started = false;
     let idleId;
     let timeoutId;
-    const currentMedia = content[displayedId]?.media ?? content[displayedId]?.images ?? [];
-    const elements = [...document.querySelectorAll(
-      ".content-pane .work-media-card > video, .content-pane .work-media-card > img, .content-pane .photo-frame > img",
-    )];
-    const firstMedia = currentMedia.slice(0, 2).map((item) =>
-      elements.find((element) => element.getAttribute("src") === getMediaSource(item.src)),
-    ).filter(Boolean);
-    const currentIndex = pageLoop.findIndex((page) => page.id === displayedId);
-    const otherPages = pageLoop.slice(currentIndex + 1).concat(pageLoop.slice(0, Math.max(0, currentIndex)));
-    // Warm one preview per destination first, then its second item. Limit the
-    // work to the first screen rather than downloading whole video galleries.
-    const previews = otherPages.map((page) => (content[page.id].media ?? content[page.id].images).slice(0, 2));
-    const queue = [0, 1].flatMap((index) => previews.map((items) => items[index]).filter(Boolean));
-    let started = false;
-    function start() {
-      if (started || document.hidden || signal.aborted) return;
-      started = true;
-      Promise.all(firstMedia.map((element) => waitForMediaReady(element, signal))).then(() => {
-        if (signal.aborted) return;
-        const run = () => {
-          if (!document.hidden && !signal.aborted) void warmMedia(queue, signal);
-          else started = false;
-        };
-        if ("requestIdleCallback" in window) idleId = window.requestIdleCallback(run, { timeout: 2000 });
-        else timeoutId = window.setTimeout(run, 300);
-      });
+    const connection = navigator.connection;
+
+    function sync() {
+      if (started && !document.hidden && canPreloadMedia()) mediaPreloader.resume();
+      else mediaPreloader.pause();
     }
-    start();
-    document.addEventListener("visibilitychange", start);
+    function start() {
+      started = true;
+      sync();
+    }
+    function schedule() {
+      if ("requestIdleCallback" in window) idleId = window.requestIdleCallback(start, { timeout: 1200 });
+      else timeoutId = window.setTimeout(start, 150);
+    }
+    // Let the home artwork and initial page render load first. Once started,
+    // the queue survives navigation; hiding the tab pauses only new requests.
+    if (document.readyState === "complete") schedule();
+    else window.addEventListener("load", schedule, { once: true });
+    document.addEventListener("visibilitychange", sync);
+    connection?.addEventListener("change", sync);
     return () => {
-      controller.abort();
+      mediaPreloader.pause();
+      window.removeEventListener("load", schedule);
+      document.removeEventListener("visibilitychange", sync);
+      connection?.removeEventListener("change", sync);
       if (idleId !== undefined) window.cancelIdleCallback(idleId);
       window.clearTimeout(timeoutId);
-      document.removeEventListener("visibilitychange", start);
     };
-  }, [selectedId, displayedId]);
+  }, []);
 
   useEffect(() => {
     function handlePopState() {
@@ -2060,6 +1965,12 @@ function App() {
     }
 
     pushRouteSectionId(getRouteSectionId(), true);
+    // Reuse the page entrance on first paint, including the shared objects.
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      pageTransitionSettleTimerRef.current = window.setTimeout(() => {
+        setPageTransitionPhase("idle");
+      }, displayedIdRef.current === "home" ? HOME_ENTER_MS : PAGE_ENTER_MS);
+    }
     window.addEventListener("popstate", handlePopState);
     window.addEventListener("hashchange", handlePopState);
 
@@ -2082,7 +1993,8 @@ function App() {
     setDisplayedId(nextId);
   }
 
-  function transitionTo(nextId) {
+  const transitionTo = useCallback((nextId) => {
+    preloadSection(nextId);
     if (nextId === selectedIdRef.current) {
       return;
     }
@@ -2111,20 +2023,51 @@ function App() {
 
       pageTransitionSettleTimerRef.current = window.setTimeout(() => {
         setPageTransitionPhase("idle");
-      }, PAGE_ENTER_MS);
+      }, nextId === "home" ? HOME_ENTER_MS : PAGE_ENTER_MS);
     }, PAGE_EXIT_MS);
-  }
+  }, []);
 
-  function handleSelect(nextId) {
+  const handleSelect = useCallback((nextId) => {
     pushRouteSectionId(nextId);
     transitionTo(nextId);
-  }
+  }, [transitionTo]);
+
+  useEffect(() => {
+    if (pageTransitionPhase !== "idle") return;
+    function navigateWithKey(event) {
+      if (event.defaultPrevented || event.repeat || event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (document.getElementById("root")?.inert) return;
+      const target = event.target;
+      if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, [role="textbox"]'))) return;
+      const key = event.key.toLowerCase();
+      const destination = key === "s" ? "fuse-wallet" : key === "e" ? "explorations" : null;
+      const isWork = displayedId === "fuse-wallet" || displayedId === "explorations";
+      const nextId = displayedId === "home" ? destination
+        : isWork && (destination === displayedId || key === "escape") ? "home" : null;
+      if (!nextId) return;
+      event.preventDefault();
+      event.stopPropagation();
+      handleSelect(nextId);
+    }
+    // Let Escape leave a work page even when its rotatable object has focus.
+    window.addEventListener("keydown", navigateWithKey, true);
+    return () => window.removeEventListener("keydown", navigateWithKey, true);
+  }, [displayedId, pageTransitionPhase, handleSelect]);
 
   return (
+    <>
+      <SharedObject3D kind="can" page={displayedId} phase={pageTransitionPhase} />
+      <SharedObject3D kind="disc" page={displayedId} phase={pageTransitionPhase} />
+      {displayedId === "home" ? <Home phase={pageTransitionPhase} onSelect={handleSelect} onIntent={preloadSection} /> :
+      displayedId === "fuse-wallet" || displayedId === "explorations" ? (
+        <ContentPane key={displayedId} onSelect={handleSelect} selectedId={displayedId} transitionKey={pageTransitionKey} transitionPhase={pageTransitionPhase} />
+      ) : (
     <div className="portfolio-shell">
       <aside className="sidebar">
         <div className="navigation-header">
-          <PortfolioHeader selectedId={selectedId} />
+          <a className="home-return" href="/" aria-label="Back to home" onClick={event => navigateFromLink(event, "home", handleSelect)}>
+            <PortfolioHeader selectedId={selectedId} />
+          </a>
           <PortfolioNav selectedId={selectedId} onSelect={handleSelect} />
         </div>
         <BioBlock />
@@ -2137,6 +2080,8 @@ function App() {
         transitionPhase={pageTransitionPhase}
       />
     </div>
+      )}
+    </>
   );
 }
 

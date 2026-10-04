@@ -5,6 +5,7 @@ import signature from "../assets/signature-new-small.png";
 import { sectionPaths } from "./routes.js";
 import "./home.css";
 import InteractiveLabel from "./InteractiveLabel.jsx";
+import HomePreview from "./HomePreview.jsx";
 
 export function navigateFromLink(event, id, onSelect) {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -54,7 +55,7 @@ function DestinationLabel({ destination }) {
   return <>{isWork ? "Selected work" : "Explorations"} <span className="home-destination-shortcut">[{isWork ? "S" : "E"}]</span></>;
 }
 
-export default function Home({ phase, onSelect, onIntent }) {
+export default function Home({ phase, onSelect, onIntent, previews }) {
   const [hoveredDestination, setHoveredDestination] = useState("work");
   const tooltipRef = useRef(null);
 
@@ -114,8 +115,7 @@ export default function Home({ phase, onSelect, onIntent }) {
             onPointerCancel={hideDestinationLabel}
           >
             <a
-              className="home-destination home-destination--work object-slot"
-              data-object-slot="can"
+              className="home-destination home-destination--work"
               href={sectionPaths["fuse-wallet"]}
               onPointerEnter={() => onIntent?.("fuse-wallet")}
               onFocus={() => onIntent?.("fuse-wallet")}
@@ -125,12 +125,12 @@ export default function Home({ phase, onSelect, onIntent }) {
               aria-describedby="home-object-controls"
               draggable="false"
             >
+              <HomePreview clips={previews.work} phase={phase} />
               <span className="home-destination-label" aria-hidden="true"><DestinationLabel destination="work" /></span>
               <kbd className="home-destination-key" aria-hidden="true">S</kbd>
             </a>
             <a
-              className="home-destination home-destination--explorations object-slot"
-              data-object-slot="disc"
+              className="home-destination home-destination--explorations"
               href={sectionPaths.explorations}
               onPointerEnter={() => onIntent?.("explorations")}
               onFocus={() => onIntent?.("explorations")}
@@ -140,13 +140,14 @@ export default function Home({ phase, onSelect, onIntent }) {
               aria-describedby="home-object-controls"
               draggable="false"
             >
+              <HomePreview clips={previews.explorations} interval={7200} phase={phase} />
               <span className="home-destination-label" aria-hidden="true"><DestinationLabel destination="explorations" /></span>
               <kbd className="home-destination-key" aria-hidden="true">E</kbd>
             </a>
             {createPortal(<span ref={tooltipRef} className={`home-destination-tooltip home-destination-tooltip--${hoveredDestination}`} data-phase={phase} aria-hidden="true">
               <DestinationLabel destination={hoveredDestination} />
             </span>, document.body)}
-            <span className="home-object-instructions" id="home-object-controls">Drag or use arrow keys to rotate. Hold Shift to move. Escape resets the object. Click or press Enter to open. Press S for Selected work or E for Explorations.</span>
+            <span className="home-object-instructions" id="home-object-controls">Click or press Enter to open. Press S for Selected work or E for Explorations.</span>
           </nav>
         </section>
       </div>

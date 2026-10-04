@@ -31,6 +31,11 @@
 .home-destination-key { position:absolute; right:8px; bottom:6px; font-family:inherit; font-size:16px; font-weight:400; line-height:1; color:#e2e2e2; pointer-events:none; }
 .home-destination-art { display:block; width:90%; height:90%; object-fit:contain; image-rendering:pixelated; user-select:none; }
 .home-destination--work .home-destination-art { width:76%; height:76%; }
+.home-preview { position:absolute; inset:0; display:block; overflow:hidden; background:#f7f7f7; pointer-events:none; }
+.home-preview-video { position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity 650ms cubic-bezier(.22,1,.36,1); }
+.home-preview-video[data-active="true"] { opacity:1; }
+.home-destination { cursor:pointer; touch-action:manipulation; }
+.home-destination-key { z-index:2; }
 .home-object { position:relative; display:grid; place-items:center; width:100%; height:100%; min-width:0; min-height:0; border-radius:inherit; overflow:hidden; touch-action:none; cursor:grab; }
 .home-object .home-destination-art { pointer-events:none; }
 .home-object-canvas { position:absolute; inset:0; display:block; width:100%; height:100%; image-rendering:pixelated; opacity:0; }
@@ -75,6 +80,7 @@ body:has(.home-destination[data-object-dragging]) .home-destination-tooltip,
   .home-destination-tooltip { display:none; }
 }
 @media (prefers-reduced-motion:reduce) {
+  .home-preview-video { transition:none; }
   .home-page .home-column, .home-page .home-intro > * { animation:none; transition:none; filter:none; opacity:1; }
   .home-hover-text > *, .home-page .home-intro .interactive-label, .home-destination-tooltip { transition:none; }
 }

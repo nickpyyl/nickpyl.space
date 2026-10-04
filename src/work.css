@@ -56,6 +56,11 @@
 .selected-work-page.content-pane--entering :is(.work-intro > *, .work-piece, .work-rail-end) { animation:page-reveal 620ms cubic-bezier(.25,.1,.25,1) var(--page-reveal-delay, 0ms) both; }
 .work-summary { --page-reveal-delay:35ms; }
 .work-rail-end { --page-reveal-delay:140ms; }
+::view-transition-old(root) { animation:preview-page-out 380ms cubic-bezier(.22,1,.36,1) both; }
+::view-transition-new(root) { animation:preview-page-in 480ms cubic-bezier(.22,1,.36,1) both; }
+::view-transition-group(root) { animation-duration:480ms; }
+@keyframes preview-page-out { to { opacity:0; transform:translateY(-6px); filter:blur(3px); } }
+@keyframes preview-page-in { from { opacity:0; transform:translateY(10px); filter:blur(3px); } to { opacity:1; transform:none; filter:blur(0); } }
 @media (max-width:700px) {
   .work-back-section { display:block; }
   .work-back-shortcut { display:none; }
@@ -67,6 +72,7 @@
   .work-rail-lead--object { flex-basis:var(--object-size); width:var(--object-size); }
 }
 @media (prefers-reduced-motion:reduce) {
+  ::view-transition-old(root), ::view-transition-new(root), ::view-transition-group(root) { animation:none; }
   .work-rail-track { transform:none !important; transition:none !important; animation:none !important; }
   .shared-object, .work-intro, .work-piece, .work-rail-end, .work-back { transition:none; }
   .shared-object[data-phase="entering"][data-transition="reveal"] { animation:none; }

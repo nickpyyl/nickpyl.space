@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import Home, { navigateFromLink } from "./Home.jsx";
-import SharedObject3D from "./SharedObject3D.jsx";
 import WorkIntro from "./WorkIntro.jsx";
 import "./work.css";
 import InteractiveLabel from "./InteractiveLabel.jsx";
@@ -274,6 +273,11 @@ const content = {
     description: "Coming soon.",
     images: [],
   },
+};
+
+const homePreviews = {
+  work: [fuseMedia04, fuseMedia08, fuseMedia06, fuseMedia01, fuseMedia02].map(src => ({ src })),
+  explorations: [explorationMedia01, explorationMedia03, explorationMedia16, explorationMedia05, explorationMedia18].map(src => ({ src })),
 };
 
 const pageLoop = [
@@ -1186,9 +1190,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
           <WorkIntro selectedId={selectedId} onSelect={onSelect} />
           <div className="work-rail" role="region" aria-label={`${selectedContent.title} projects`} tabIndex={0}>
             <div className="work-rail-track">
-              <div className="work-rail-lead work-rail-lead--object">
-                <button className="work-object-slot object-slot" data-object-slot={selectedId === "fuse-wallet" ? "can" : "disc"} type="button" aria-label={selectedId === "fuse-wallet" ? "Rotate the Red Bull can" : "Rotate the disc"} aria-describedby="work-object-instructions" />
-              </div>
+              <div className="work-rail-lead" aria-hidden="true" />
               {indexedMedia.map(({ item, index }) => (
                 <figure className="work-piece" key={item.src} style={{ "--work-aspect-ratio": getMediaAspectRatio(item), "--page-reveal-delay": `${70 + Math.min(index, 2) * 35}ms` }}>
                   <MediaCard isHidden={hiddenMediaIndexes.includes(index)} priority={index < 2} item={item}
@@ -1200,7 +1202,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
               <div className="work-rail-end"><NextPageLink currentId={selectedId} onSelect={onSelect} horizontal /></div>
             </div>
           </div>
-          <span className="home-object-instructions" id="work-object-instructions">Drag or use arrow keys to rotate. Hold Shift to move. Press Escape to return home.</span>
+          <span className="home-object-instructions" id="work-object-instructions">Press Escape to return home.</span>
         </div>
       ) : (
       <div className="content-motion" key={`${selectedId}-${transitionKey}`}>
@@ -1910,6 +1912,7 @@ function App() {
   const [pageTransitionKey, setPageTransitionKey] = useState(0);
   const pageTransitionTimerRef = useRef(null);
   const pageTransitionSettleTimerRef = useRef(null);
+  const viewTransitionRef = useRef(null);
   const selectedIdRef = useRef(selectedId);
   const displayedIdRef = useRef(displayedId);
 
@@ -1979,6 +1982,7 @@ function App() {
       window.removeEventListener("hashchange", handlePopState);
       window.clearTimeout(pageTransitionTimerRef.current);
       window.clearTimeout(pageTransitionSettleTimerRef.current);
+      viewTransitionRef.current?.skipTransition();
     };
   }, []);
 
@@ -2000,6 +2004,7 @@ function App() {
     }
 
     selectedIdRef.current = nextId;
+    viewTransitionRef.current?.skipTransition();
     setSelectedId(nextId);
     window.clearTimeout(pageTransitionTimerRef.current);
     window.clearTimeout(pageTransitionSettleTimerRef.current);
@@ -2012,6 +2017,25 @@ function App() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setDisplayedContent(nextId);
       setPageTransitionPhase("idle");
+      return;
+    }
+
+    // Capture both complete layouts so navigation overlaps instead of fading
+    // through a blank screen. Older browsers keep the existing page entrance.
+    if (document.startViewTransition) {
+      const transition = document.startViewTransition(() => {
+        if (selectedIdRef.current !== nextId) return;
+        flushSync(() => {
+          setDisplayedContent(nextId);
+          setPageTransitionKey(key => key + 1);
+          setPageTransitionPhase("idle");
+        });
+      });
+      viewTransitionRef.current = transition;
+      transition.ready.catch(() => {});
+      transition.finished.catch(() => {}).finally(() => {
+        if (viewTransitionRef.current === transition) viewTransitionRef.current = null;
+      });
       return;
     }
 
@@ -2056,9 +2080,7 @@ function App() {
 
   return (
     <>
-      <SharedObject3D kind="can" page={displayedId} phase={pageTransitionPhase} />
-      <SharedObject3D kind="disc" page={displayedId} phase={pageTransitionPhase} />
-      {displayedId === "home" ? <Home phase={pageTransitionPhase} onSelect={handleSelect} onIntent={preloadSection} /> :
+      {displayedId === "home" ? <Home previews={homePreviews} phase={pageTransitionPhase} onSelect={handleSelect} onIntent={preloadSection} /> :
       displayedId === "fuse-wallet" || displayedId === "explorations" ? (
         <ContentPane key={displayedId} onSelect={handleSelect} selectedId={displayedId} transitionKey={pageTransitionKey} transitionPhase={pageTransitionPhase} />
       ) : (

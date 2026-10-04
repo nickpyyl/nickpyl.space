@@ -1,5 +1,5 @@
-.home-page { position:fixed; inset:0; overflow-x:hidden; overflow-y:auto; background:#fff; color:#161616; }
-.home-column { width:400px; max-width:calc(100% - 48px); margin:0 auto; padding:clamp(64px, 17.5vh, 150px) 0 64px; font-size:16px; line-height:1.34; letter-spacing:0; }
+.home-page { position:fixed; inset:0; display:flex; flex-direction:column; overflow-x:hidden; overflow-y:auto; background:#fff; color:#161616; }
+.home-column { flex-shrink:0; width:400px; max-width:calc(100% - 48px); margin:auto; padding:64px 0; font-size:16px; line-height:1.34; letter-spacing:0; }
 .home-intro { display:flex; flex-direction:column; gap:18px; }
 .home-portrait { width:32px; height:32px; object-fit:cover; margin-bottom:6px; }
 .home-intro h1, .home-intro p { font-size:inherit; font-weight:400; line-height:inherit; margin:0; }
@@ -58,15 +58,16 @@ body:has(.home-destination[data-object-dragging]) .home-destination-tooltip,
 .home-destinations[data-pointer-active] .home-destination-label { opacity:0; }
 .home-return { display:block; width:fit-content; }
 .home-page--leaving, .home-page--entering { pointer-events:none; }
-.home-page--leaving .home-column { animation:page-fade-out 280ms ease-in-out both; }
+.home-page--leaving .home-column { animation:preview-root-out 260ms ease-in-out both; }
 .home-page--entering .home-intro > * { animation:page-reveal 460ms cubic-bezier(.25,.1,.25,1) both; }
 .home-page--entering .home-intro > :nth-child(2) { animation-delay:15ms; }
 .home-page--entering .home-intro > :nth-child(3) { animation-delay:35ms; }
 .home-page--entering .home-intro > :nth-child(4) { animation-delay:55ms; }
 .home-page--entering .home-intro > :nth-child(5) { animation-delay:80ms; }
 .home-page--entering .home-intro > :nth-child(6) { animation-delay:100ms; }
+.home-page--entering .home-intro > :not(.home-destinations) { animation:preview-text-in 520ms ease both; }
 @media (max-width:600px) {
-  .home-column { padding-top:56px; }
+  .home-column { padding-block:56px; }
   .home-contact { gap:12px; }
   .home-contact img { width:56px; }
 }
@@ -74,7 +75,7 @@ body:has(.home-destination[data-object-dragging]) .home-destination-tooltip,
   .home-contact { flex-wrap:wrap; gap:16px; }
   .home-contact p { white-space:normal; }
 }
-@media (max-height:700px) { .home-column { padding-top:40px; } }
+@media (max-height:700px) { .home-column { padding-block:40px; } }
 @media (hover:none) {
   .home-destinations .home-destination-label,
   .home-destination-tooltip { display:none; }

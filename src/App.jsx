@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
+import { startPreviewTransition } from "./preview-transition.js";
 import Home, { navigateFromLink } from "./Home.jsx";
 import WorkIntro from "./WorkIntro.jsx";
-import BotanicalDecor from "./BotanicalDecor.jsx";
 import "./work.css";
 import InteractiveLabel from "./InteractiveLabel.jsx";
 import { canPreloadMedia, getMediaSource, mediaPreloader } from "./media-preload.js";
@@ -11,8 +11,8 @@ import { DEFAULT_SECTION_ID, resolveSectionId, sectionPaths, sectionTitles } fro
 import avatarNick from "../assets/avatar-nick-small.png";
 import signatureNew from "../assets/signature-new-small.png";
 import nextPageChevron from "../assets/icon-chevron-right-small.svg";
-import nextPageExplorations from "../assets/home-disc-ps2.png";
-import nextPageSelectedWork from "../assets/home-redbull-ps2.png";
+import nextPageExplorations from "../assets/icon-explorations.svg";
+import nextPageSelectedWork from "../assets/icon-selected-work.svg";
 import shotVintageCar from "../assets/optimized/shots-000032420024.webp";
 import shotWhiteFenceLandscape from "../assets/optimized/shots-000041000002.webp";
 import shotHallwayWindow from "../assets/optimized/shots-000041000004.webp";
@@ -122,15 +122,15 @@ const content = {
     media: [
       {
         type: "video",
-        src: explorationMedia02,
-        alt: "Exploration interaction video 2",
-        description: "Document signature / mobile version",
-      },
-      {
-        type: "video",
         src: explorationMedia01,
         alt: "Exploration interaction video 1",
         description: "Interaction with my shots from Copenhagen",
+      },
+      {
+        type: "video",
+        src: explorationMedia02,
+        alt: "Exploration interaction video 2",
+        description: "Document signature / mobile version",
       },
       {
         type: "video",
@@ -277,13 +277,13 @@ const content = {
 };
 
 const homePreviews = {
-  work: [fuseMedia04, fuseMedia08, fuseMedia06, fuseMedia01, fuseMedia02].map(src => ({ src })),
-  explorations: [explorationMedia01, explorationMedia03, explorationMedia16, explorationMedia05, explorationMedia18].map(src => ({ src })),
+  work: content["fuse-wallet"].media[0],
+  explorations: content.explorations.media[0],
 };
 
 const pageLoop = [
   { id: "fuse-wallet", label: "Selected work", thumbnail: nextPageSelectedWork },
-  { id: "explorations", label: "Design Experiments", thumbnail: nextPageExplorations },
+  { id: "explorations", label: "Explorations", thumbnail: nextPageExplorations },
 ];
 function preloadSection(id) {
   if (document.hidden || !canPreloadMedia()) return;
@@ -1188,14 +1188,13 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
     >
       {isWork ? (
         <div className="work-layout" key={`${selectedId}-${transitionKey}`}>
-          <BotanicalDecor kind={selectedId === "fuse-wallet" ? "flowers" : "butterflies"} mode="page" phase={transitionPhase} />
           <WorkIntro selectedId={selectedId} onSelect={onSelect} />
           <div className="work-rail" role="region" aria-label={`${selectedContent.title} projects`} tabIndex={0}>
             <div className="work-rail-track">
               <div className="work-rail-lead" aria-hidden="true" />
               {indexedMedia.map(({ item, index }) => (
                 <figure className="work-piece" key={item.src} style={{ "--work-aspect-ratio": getMediaAspectRatio(item), "--page-reveal-delay": `${70 + Math.min(index, 2) * 35}ms` }}>
-                  <MediaCard isHidden={hiddenMediaIndexes.includes(index)} priority={index < 2} item={item}
+                  <MediaCard sharedPreview={index === 0 ? selectedId : undefined} isHidden={hiddenMediaIndexes.includes(index)} priority={index < 2} item={item}
                     onClick={event => openMedia(index, event.currentTarget)}
                     refCallback={element => { mediaCardRefs.current[index] = element; }} />
                   <figcaption>{item.description}</figcaption>
@@ -1573,10 +1572,11 @@ function PhotographyPane({ onSelect, selectedContent, selectedId, transitionKey,
   );
 }
 
-function MediaCard({ isHidden, item, onClick, priority, refCallback }) {
+function MediaCard({ isHidden, item, onClick, priority, refCallback, sharedPreview }) {
   return (
     <button
       className="work-media-card"
+      data-shared-preview={sharedPreview}
       data-hidden={isHidden ? "true" : "false"}
       style={item.aspectRatio ? { "--media-aspect-ratio": item.aspectRatio } : undefined}
       type="button"
@@ -1912,9 +1912,9 @@ function App() {
     window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "idle" : "entering",
   );
   const [pageTransitionKey, setPageTransitionKey] = useState(0);
+  const sharedTransitionRef = useRef(null);
   const pageTransitionTimerRef = useRef(null);
   const pageTransitionSettleTimerRef = useRef(null);
-  const viewTransitionRef = useRef(null);
   const selectedIdRef = useRef(selectedId);
   const displayedIdRef = useRef(displayedId);
 
@@ -1980,11 +1980,11 @@ function App() {
     window.addEventListener("hashchange", handlePopState);
 
     return () => {
+      sharedTransitionRef.current?.skipTransition();
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener("hashchange", handlePopState);
       window.clearTimeout(pageTransitionTimerRef.current);
       window.clearTimeout(pageTransitionSettleTimerRef.current);
-      viewTransitionRef.current?.skipTransition();
     };
   }, []);
 
@@ -2005,8 +2005,8 @@ function App() {
       return;
     }
 
+    sharedTransitionRef.current?.skipTransition();
     selectedIdRef.current = nextId;
-    viewTransitionRef.current?.skipTransition();
     setSelectedId(nextId);
     window.clearTimeout(pageTransitionTimerRef.current);
     window.clearTimeout(pageTransitionSettleTimerRef.current);
@@ -2022,23 +2022,22 @@ function App() {
       return;
     }
 
-    // Capture both complete layouts so navigation overlaps instead of fading
-    // through a blank screen. Older browsers keep the existing page entrance.
-    if (document.startViewTransition) {
-      const transition = document.startViewTransition(() => {
-        if (selectedIdRef.current !== nextId) return;
+    const fromId = displayedIdRef.current;
+    const section = fromId === "home" ? nextId : nextId === "home" ? fromId : null;
+    if (section === "fuse-wallet" || section === "explorations") {
+      const transition = startPreviewTransition(section, () => {
+        if (selectedIdRef.current !== nextId) return false;
         flushSync(() => {
           setDisplayedContent(nextId);
           setPageTransitionKey(key => key + 1);
           setPageTransitionPhase("idle");
         });
+        return true;
       });
-      viewTransitionRef.current = transition;
-      transition.ready.catch(() => {});
-      transition.finished.catch(() => {}).finally(() => {
-        if (viewTransitionRef.current === transition) viewTransitionRef.current = null;
-      });
-      return;
+      if (transition) {
+        sharedTransitionRef.current = transition;
+        return;
+      }
     }
 
     setPageTransitionPhase("leaving");

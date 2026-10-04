@@ -6,7 +6,6 @@ import { sectionPaths } from "./routes.js";
 import "./home.css";
 import InteractiveLabel from "./InteractiveLabel.jsx";
 import HomePreview from "./HomePreview.jsx";
-import BotanicalDecor from "./BotanicalDecor.jsx";
 
 export function navigateFromLink(event, id, onSelect) {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -117,6 +116,7 @@ export default function Home({ phase, onSelect, onIntent, previews }) {
           >
             <a
               className="home-destination home-destination--work"
+              data-shared-preview="fuse-wallet"
               href={sectionPaths["fuse-wallet"]}
               onPointerEnter={() => onIntent?.("fuse-wallet")}
               onFocus={() => onIntent?.("fuse-wallet")}
@@ -126,13 +126,13 @@ export default function Home({ phase, onSelect, onIntent, previews }) {
               aria-describedby="home-object-controls"
               draggable="false"
             >
-              <HomePreview clips={previews.work} phase={phase} />
-              <BotanicalDecor kind="flowers" phase={phase} />
+              <HomePreview clip={previews.work} />
               <span className="home-destination-label" aria-hidden="true"><DestinationLabel destination="work" /></span>
               <kbd className="home-destination-key" aria-hidden="true">S</kbd>
             </a>
             <a
               className="home-destination home-destination--explorations"
+              data-shared-preview="explorations"
               href={sectionPaths.explorations}
               onPointerEnter={() => onIntent?.("explorations")}
               onFocus={() => onIntent?.("explorations")}
@@ -142,8 +142,7 @@ export default function Home({ phase, onSelect, onIntent, previews }) {
               aria-describedby="home-object-controls"
               draggable="false"
             >
-              <HomePreview clips={previews.explorations} interval={7200} phase={phase} />
-              <BotanicalDecor kind="butterflies" phase={phase} />
+              <HomePreview clip={previews.explorations} />
               <span className="home-destination-label" aria-hidden="true"><DestinationLabel destination="explorations" /></span>
               <kbd className="home-destination-key" aria-hidden="true">E</kbd>
             </a>

@@ -183,7 +183,7 @@ export async function mountHomeObject(host, kind) {
   const initialRotation = model.rotation.clone();
   pivot.add(model); scene.add(pivot);
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  const cruiseSpeed = kind === "can" ? .14 : .18;
+  const cruiseSpeed = kind === "can" ? .14 : .22;
   const drag = { pointer:null, moved:false, x:0, y:0, startX:0, startY:0, time:0, move:false };
   const velocity = new THREE.Vector2(kind === "can" ? cruiseSpeed : 0, 0);
   const spinDirection = new THREE.Vector2(1, 0);

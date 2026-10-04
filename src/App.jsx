@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { createPortal, flushSync } from "react-dom";
 import Home, { navigateFromLink } from "./Home.jsx";
 import WorkIntro from "./WorkIntro.jsx";
+import BotanicalDecor from "./BotanicalDecor.jsx";
 import "./work.css";
 import InteractiveLabel from "./InteractiveLabel.jsx";
 import { canPreloadMedia, getMediaSource, mediaPreloader } from "./media-preload.js";
@@ -1187,6 +1188,7 @@ function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase 
     >
       {isWork ? (
         <div className="work-layout" key={`${selectedId}-${transitionKey}`}>
+          <BotanicalDecor kind={selectedId === "fuse-wallet" ? "flowers" : "butterflies"} mode="page" phase={transitionPhase} />
           <WorkIntro selectedId={selectedId} onSelect={onSelect} />
           <div className="work-rail" role="region" aria-label={`${selectedContent.title} projects`} tabIndex={0}>
             <div className="work-rail-track">

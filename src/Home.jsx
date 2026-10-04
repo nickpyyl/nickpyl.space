@@ -6,6 +6,7 @@ import { sectionPaths } from "./routes.js";
 import "./home.css";
 import InteractiveLabel from "./InteractiveLabel.jsx";
 import HomePreview from "./HomePreview.jsx";
+import BotanicalDecor from "./BotanicalDecor.jsx";
 
 export function navigateFromLink(event, id, onSelect) {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -126,6 +127,7 @@ export default function Home({ phase, onSelect, onIntent, previews }) {
               draggable="false"
             >
               <HomePreview clips={previews.work} phase={phase} />
+              <BotanicalDecor kind="flowers" phase={phase} />
               <span className="home-destination-label" aria-hidden="true"><DestinationLabel destination="work" /></span>
               <kbd className="home-destination-key" aria-hidden="true">S</kbd>
             </a>
@@ -141,6 +143,7 @@ export default function Home({ phase, onSelect, onIntent, previews }) {
               draggable="false"
             >
               <HomePreview clips={previews.explorations} interval={7200} phase={phase} />
+              <BotanicalDecor kind="butterflies" phase={phase} />
               <span className="home-destination-label" aria-hidden="true"><DestinationLabel destination="explorations" /></span>
               <kbd className="home-destination-key" aria-hidden="true">E</kbd>
             </a>

@@ -21,7 +21,7 @@ mock.module("three", {
 });
 const assets = registerHooks({
   load(url, context, nextLoad) {
-    if (url.endsWith("/home-redbull-ps2-texture.png")) return { format:"module", source:'export default "can.png";', shortCircuit:true };
+    if (url.endsWith("/home-redbull-ps2-texture.webp")) return { format:"module", source:'export default "can.webp";', shortCircuit:true };
     return nextLoad(url, context);
   },
 });

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import canTextureUrl from "../assets/home-redbull-ps2-texture.png";
+import canTextureUrl from "../assets/home-redbull-ps2-texture.webp";
 import { advanceSpin } from "./home-object-motion.js";
 
 const TAU = Math.PI * 2;

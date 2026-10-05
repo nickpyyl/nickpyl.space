@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
+import { promotePreview } from "./preview-playlist.js";
 import { startPreviewTransition } from "./preview-transition.js";
 import Home, { navigateFromLink } from "./Home.jsx";
 import WorkIntro from "./WorkIntro.jsx";
@@ -150,7 +151,7 @@ const content = {
         type: "video",
         src: explorationMedia05,
         alt: "Exploration interaction video 5",
-        description: "Spotify integration in Telegram",
+        description: "lights out",
       },
       {
         type: "video",
@@ -277,8 +278,10 @@ const content = {
 };
 
 const homePreviews = {
-  work: content["fuse-wallet"].media[0],
-  explorations: content.explorations.media[0],
+  work: [fuseMedia08, fuseMedia06, fusePlusMembership, fuseMedia01,
+    ...content["fuse-wallet"].media.filter(item => item.type === "video" && ![fuseMedia08, fuseMedia06, fuseMedia01, fuseMedia09].includes(item.src)).map(item => item.src),
+  ].map(src => ({ ...content["fuse-wallet"].media.find(item => item.src === src), durationMs: src === fusePlusMembership ? 3000 : undefined })),
+  explorations: content.explorations.media.filter(item => item.type === "video" && item.src !== explorationMedia04),
 };
 
 const pageLoop = [
@@ -859,8 +862,11 @@ function NextPageLink({ currentId, onSelect, horizontal = false }) {
   );
 }
 
-function ContentPane({ onSelect, selectedId, transitionKey = 0, transitionPhase = "idle" }) {
-  const selectedContent = content[selectedId] ?? content["fuse-wallet"];
+function ContentPane({ onSelect, selectedId, previewSrc, transitionKey = 0, transitionPhase = "idle" }) {
+  const selectedContent = useMemo(() => {
+    const base = content[selectedId] ?? content["fuse-wallet"];
+    return base.media ? { ...base, media: promotePreview(base.media, previewSrc) } : base;
+  }, [selectedId, previewSrc]);
   const isWork = selectedId === "fuse-wallet" || selectedId === "explorations";
   const [activeMediaIndex, setActiveMediaIndex] = useState(null);
   const [activeMediaElement, setActiveMediaElement] = useState(null);
@@ -1912,6 +1918,11 @@ function App() {
     window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "idle" : "entering",
   );
   const [pageTransitionKey, setPageTransitionKey] = useState(0);
+  const [previewSources, setPreviewSources] = useState(() => ({
+    work: homePreviews.work[0].src, explorations: homePreviews.explorations[0].src,
+  }));
+  const [previewTransitioning, setPreviewTransitioning] = useState(false);
+  const previewLocked = useRef(false);
   const sharedTransitionRef = useRef(null);
   const pageTransitionTimerRef = useRef(null);
   const pageTransitionSettleTimerRef = useRef(null);
@@ -1970,9 +1981,10 @@ function App() {
     }
 
     pushRouteSectionId(getRouteSectionId(), true);
-    // Reuse the page entrance on first paint, including the shared objects.
+    // Reuse the page entrance on first paint.
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       pageTransitionSettleTimerRef.current = window.setTimeout(() => {
+        previewLocked.current = false;
         setPageTransitionPhase("idle");
       }, displayedIdRef.current === "home" ? HOME_ENTER_MS : PAGE_ENTER_MS);
     }
@@ -1999,6 +2011,13 @@ function App() {
     setDisplayedId(nextId);
   }
 
+  const advancePreview = useCallback((section, src) => {
+    if (selectedIdRef.current !== "home" || previewLocked.current) return false;
+    // Promote the already-decoded buffer and its gallery identity atomically.
+    flushSync(() => setPreviewSources(current => ({ ...current, [section]: src })));
+    return true;
+  }, []);
+
   const transitionTo = useCallback((nextId) => {
     preloadSection(nextId);
     if (nextId === selectedIdRef.current) {
@@ -2006,18 +2025,23 @@ function App() {
     }
 
     sharedTransitionRef.current?.skipTransition();
+    sharedTransitionRef.current = null;
+    previewLocked.current = true;
+    setPreviewTransitioning(false);
     selectedIdRef.current = nextId;
     setSelectedId(nextId);
     window.clearTimeout(pageTransitionTimerRef.current);
     window.clearTimeout(pageTransitionSettleTimerRef.current);
 
     if (nextId === displayedIdRef.current) {
+      previewLocked.current = false;
       setPageTransitionPhase("idle");
       return;
     }
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setDisplayedContent(nextId);
+      previewLocked.current = false;
       setPageTransitionPhase("idle");
       return;
     }
@@ -2036,6 +2060,13 @@ function App() {
       });
       if (transition) {
         sharedTransitionRef.current = transition;
+        setPreviewTransitioning(true);
+        transition.finished.catch(() => {}).finally(() => {
+          if (sharedTransitionRef.current !== transition) return;
+          sharedTransitionRef.current = null;
+          previewLocked.current = false;
+          setPreviewTransitioning(false);
+        });
         return;
       }
     }
@@ -2047,6 +2078,7 @@ function App() {
       setPageTransitionPhase("entering");
 
       pageTransitionSettleTimerRef.current = window.setTimeout(() => {
+        previewLocked.current = false;
         setPageTransitionPhase("idle");
       }, nextId === "home" ? HOME_ENTER_MS : PAGE_ENTER_MS);
     }, PAGE_EXIT_MS);
@@ -2065,7 +2097,10 @@ function App() {
       const target = event.target;
       if (target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select, [role="textbox"]'))) return;
       const key = event.key.toLowerCase();
-      const destination = key === "s" ? "fuse-wallet" : key === "e" ? "explorations" : null;
+      // Physical key positions stay consistent across system keyboard layouts.
+      const code = event.code && event.code !== "Unidentified" ? event.code
+        : key === "s" ? "KeyS" : key === "e" ? "KeyE" : "";
+      const destination = code === "KeyS" ? "fuse-wallet" : code === "KeyE" ? "explorations" : null;
       const isWork = displayedId === "fuse-wallet" || displayedId === "explorations";
       const nextId = displayedId === "home" ? destination
         : isWork && (destination === displayedId || key === "escape") ? "home" : null;
@@ -2074,16 +2109,16 @@ function App() {
       event.stopPropagation();
       handleSelect(nextId);
     }
-    // Let Escape leave a work page even when its rotatable object has focus.
+    // Let Escape leave a work page before its focused controls handle the key.
     window.addEventListener("keydown", navigateWithKey, true);
     return () => window.removeEventListener("keydown", navigateWithKey, true);
   }, [displayedId, pageTransitionPhase, handleSelect]);
 
   return (
     <>
-      {displayedId === "home" ? <Home previews={homePreviews} phase={pageTransitionPhase} onSelect={handleSelect} onIntent={preloadSection} /> :
+      {displayedId === "home" ? <Home previews={homePreviews} previewSources={previewSources} onPreviewAdvance={advancePreview} canCycle={!previewTransitioning && selectedId === "home" && pageTransitionPhase === "idle"} phase={pageTransitionPhase} onSelect={handleSelect} onIntent={preloadSection} /> :
       displayedId === "fuse-wallet" || displayedId === "explorations" ? (
-        <ContentPane key={displayedId} onSelect={handleSelect} selectedId={displayedId} transitionKey={pageTransitionKey} transitionPhase={pageTransitionPhase} />
+        <ContentPane key={displayedId} onSelect={handleSelect} selectedId={displayedId} previewSrc={previewSources[displayedId === "fuse-wallet" ? "work" : "explorations"]} transitionKey={pageTransitionKey} transitionPhase={pageTransitionPhase} />
       ) : (
     <div className="portfolio-shell">
       <aside className="sidebar">

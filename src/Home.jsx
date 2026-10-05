@@ -55,7 +55,7 @@ function DestinationLabel({ destination }) {
   return <>{isWork ? "Selected work" : "Explorations"} <span className="home-destination-shortcut">[{isWork ? "S" : "E"}]</span></>;
 }
 
-export default function Home({ phase, onSelect, onIntent, previews }) {
+export default function Home({ phase, onSelect, onIntent, previews, previewSources, canCycle, onPreviewAdvance }) {
   const [hoveredDestination, setHoveredDestination] = useState("work");
   const tooltipRef = useRef(null);
 
@@ -126,7 +126,7 @@ export default function Home({ phase, onSelect, onIntent, previews }) {
               aria-describedby="home-object-controls"
               draggable="false"
             >
-              <HomePreview clip={previews.work} />
+              <HomePreview clips={previews.work} activeSrc={previewSources.work} section="work" canCycle={canCycle} onAdvance={onPreviewAdvance} />
               <span className="home-destination-label" aria-hidden="true"><DestinationLabel destination="work" /></span>
               <kbd className="home-destination-key" aria-hidden="true">S</kbd>
             </a>
@@ -142,7 +142,7 @@ export default function Home({ phase, onSelect, onIntent, previews }) {
               aria-describedby="home-object-controls"
               draggable="false"
             >
-              <HomePreview clip={previews.explorations} />
+              <HomePreview clips={previews.explorations} activeSrc={previewSources.explorations} section="explorations" canCycle={canCycle} onAdvance={onPreviewAdvance} />
               <span className="home-destination-label" aria-hidden="true"><DestinationLabel destination="explorations" /></span>
               <kbd className="home-destination-key" aria-hidden="true">E</kbd>
             </a>

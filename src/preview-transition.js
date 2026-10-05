@@ -5,11 +5,11 @@ export function startPreviewTransition(section, updatePage) {
   if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return null;
   const selector = `[data-shared-preview="${section}"]`;
   const source = document.querySelector(selector);
-  const video = source?.querySelector("video");
+  const video = source?.querySelector('video[data-active="true"], img[data-active="true"], video:not([data-active]), img:not([data-active])');
   const rect = source?.getBoundingClientRect();
-  if (!video || video.readyState < 2 || !rect || rect.right <= 0 || rect.left >= innerWidth || rect.bottom <= 0 || rect.top >= innerHeight) return null;
+  if (!video || (video.tagName === 'IMG' ? !video.complete || !video.naturalWidth : video.readyState < 2) || !rect || rect.right <= 0 || rect.left >= innerWidth || rect.bottom <= 0 || rect.top >= innerHeight) return null;
 
-  const time = video.currentTime;
+  const time = video.currentTime ?? 0;
   const startedAt = performance.now();
   const frame = captureFrame(video);
   const poster = frame.poster;
@@ -43,11 +43,11 @@ export function startPreviewTransition(section, updatePage) {
     const home = destination.closest(".home-page");
     if (home) home.scrollTop = homeScrollPositions.get(section) ?? 0;
     destination.style.viewTransitionName = "section-preview";
-    const nextVideo = destination.querySelector("video");
+    const nextVideo = destination.querySelector('video[data-active="true"], img[data-active="true"], video:not([data-active]), img:not([data-active])');
     if (!nextVideo) return;
     // Start movement immediately. Keep the captured frame visible while the
     // destination decodes, rather than freezing the whole old page to wait.
-    if (poster) nextVideo.poster = poster;
+    if (poster && nextVideo.tagName !== "IMG") nextVideo.poster = poster;
     prepareVideo(nextVideo, time, startedAt, () => cancelled).then(ready => {
       if (cancelled || cleaned || !ready) return;
       document.documentElement.dataset.previewReady = "true";
@@ -82,14 +82,14 @@ export function startPreviewTransition(section, updatePage) {
   });
   transition.ready.catch(() => {});
   transition.finished.catch(() => {}).finally(cleanup);
-  return { skipTransition() { cancelled = true; transition.skipTransition(); cleanup(); } };
+  return { finished: transition.finished, skipTransition() { cancelled = true; transition.skipTransition(); cleanup(); } };
 }
 
 function captureFrame(video) {
   try {
     const canvas = document.createElement("canvas");
-    canvas.width = Math.min(video.videoWidth, 640);
-    canvas.height = Math.round(canvas.width * video.videoHeight / video.videoWidth);
+    canvas.width = Math.min(video.videoWidth || video.naturalWidth, 640);
+    canvas.height = Math.round(canvas.width * (video.videoHeight || video.naturalHeight) / (video.videoWidth || video.naturalWidth));
     canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.className = "preview-handoff-frame";
     return { poster: canvas.toDataURL("image/jpeg", .85), canvas };
@@ -99,6 +99,10 @@ function captureFrame(video) {
 }
 
 async function prepareVideo(video, time, startedAt, isCancelled) {
+  if (video.tagName === "IMG") {
+    if (!video.complete) await waitForVideo(video, "load", 350);
+    return !isCancelled() && video.complete && video.naturalWidth > 0;
+  }
   if (video.readyState < 2) await waitForVideo(video, "loadeddata", 350);
   if (isCancelled() || video.readyState < 2) return false;
   if (Number.isFinite(video.duration) && video.duration > 0) {

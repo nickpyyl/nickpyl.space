@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { DEFAULT_SECTION_ID, sectionPaths, sectionTitles } from "./src/routes.js";
+import { DEFAULT_SECTION_ID, legacySectionPaths, sectionPaths, sectionTitles } from "./src/routes.js";
 
 // GitHub Pages needs a physical entry page for direct visits to each route.
 function routePages() {
@@ -15,7 +15,11 @@ function routePages() {
           `<title>${sectionTitles[DEFAULT_SECTION_ID]}</title>`,
         );
 
-        for (const [sectionId, path] of Object.entries(sectionPaths)) {
+        const entries = [
+          ...Object.entries(sectionPaths),
+          ...Object.entries(legacySectionPaths).map(([path, id]) => [id, path]),
+        ];
+        for (const [sectionId, path] of entries) {
           if (path === "/") continue;
 
           this.emitFile({
@@ -26,7 +30,7 @@ function routePages() {
               `<title>${sectionTitles[sectionId]}</title>`,
             ).replace(
               'rel="canonical" href="https://nickpyl.space/"',
-              `rel="canonical" href="https://nickpyl.space${path}"`,
+              `rel="canonical" href="https://nickpyl.space${sectionPaths[sectionId]}"`,
             ),
           });
         }

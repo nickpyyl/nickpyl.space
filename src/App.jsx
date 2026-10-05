@@ -278,10 +278,10 @@ const content = {
 };
 
 const homePreviews = {
-  work: [fuseMedia08, fuseMedia06, fusePlusMembership, fuseMedia01,
-    ...content["fuse-wallet"].media.filter(item => item.type === "video" && ![fuseMedia08, fuseMedia06, fuseMedia01, fuseMedia09].includes(item.src)).map(item => item.src),
-  ].map(src => ({ ...content["fuse-wallet"].media.find(item => item.src === src), durationMs: src === fusePlusMembership ? 3000 : undefined })),
-  explorations: content.explorations.media.filter(item => item.type === "video" && item.src !== explorationMedia04),
+  work: [fuseMedia08, fuseMedia01, fuseMedia05, fuseMedia06, fusePlusMembership]
+    .map(src => ({ ...content["fuse-wallet"].media.find(item => item.src === src), durationMs: src === fusePlusMembership ? 3000 : undefined })),
+  explorations: [explorationMedia16, explorationMedia01, explorationMedia03, explorationMedia12]
+    .map(src => content.explorations.media.find(item => item.src === src)),
 };
 
 const pageLoop = [

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { observeWorkVideo, refreshVideoPlayback } from "./work-video.js";
 
-function setup(t, { priority = false, observerSupport = true } = {}) {
+function setup(t, { priority = false, observerSupport = true, mobile = false } = {}) {
   const observers = [];
   const document = Object.assign(new EventTarget(), { hidden: false });
   const video = Object.assign(new EventTarget(), {
@@ -17,9 +17,9 @@ function setup(t, { priority = false, observerSupport = true } = {}) {
     constructor(callback, options) { Object.assign(this, { callback, options }); observers.push(this); }
     observe() {}
     disconnect() { this.disconnected = true; }
-    intersect(isIntersecting) { this.callback([{ isIntersecting }]); }
+    intersect(isIntersecting, intersectionRatio = isIntersecting ? 1 : 0) { this.callback([{ isIntersecting, intersectionRatio }]); }
   };
-  const globals = { document, window: observerSupport ? { IntersectionObserver: Observer } : {}, IntersectionObserver: Observer };
+  const globals = { document, window: observerSupport ? { IntersectionObserver: Observer, matchMedia: () => ({ matches: mobile }) } : {}, IntersectionObserver: Observer };
   const originals = Object.fromEntries(Object.keys(globals).map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
   for (const [name, value] of Object.entries(globals)) {
     Object.defineProperty(globalThis, name, { configurable: true, value });
@@ -121,4 +121,14 @@ test("browsers without IntersectionObserver retain video playback", t => {
   const { video } = setup(t, { observerSupport: false });
   assert.equal(video.src, "blob:cached");
   assert.equal(video.paused, false);
+});
+
+test("mobile pauses the narrow edge of the next gallery video", t => {
+  const { video, observers } = setup(t, { mobile: true });
+  observers[0].intersect(true, 0.08);
+  assert.equal(video.paused, true);
+  observers[0].intersect(true, 0.4);
+  assert.equal(video.paused, false);
+  observers[0].intersect(true, 0.1);
+  assert.equal(video.paused, true);
 });

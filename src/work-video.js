@@ -12,6 +12,7 @@ export function observeWorkVideo(video, src, { priority = false, sourceFor = get
   let loaded = false;
   let loadObserver;
   let visibilityObserver;
+  const playbackThreshold = window.matchMedia?.("(pointer: coarse)").matches ? 0.25 : 0.01;
 
   function load() {
     if (loaded) return;
@@ -35,9 +36,9 @@ export function observeWorkVideo(video, src, { priority = false, sourceFor = get
   video.addEventListener("loadeddata", syncPlayback);
   if ("IntersectionObserver" in window) {
     visibilityObserver = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting;
+      visible = entry.isIntersecting && (entry.intersectionRatio ?? 1) >= playbackThreshold;
       syncPlayback();
-    }, { threshold: 0.01 });
+    }, { threshold: playbackThreshold });
     visibilityObserver.observe(video);
 
     if (!priority) {

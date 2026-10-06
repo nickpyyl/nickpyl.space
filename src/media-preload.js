@@ -93,6 +93,9 @@ export const mediaPreloader = createMediaPreloader();
 export const getMediaSource = src => mediaPreloader.getSource(src);
 
 export function canPreloadMedia() {
+  // Touch devices already buffer the current/next home clips and nearby
+  // gallery items. Avoid downloading the entire portfolio alongside them.
+  if (window.matchMedia?.("(pointer: coarse)").matches) return false;
   const connection = navigator.connection;
   return !connection?.saveData && !["slow-2g", "2g"].includes(connection?.effectiveType);
 }

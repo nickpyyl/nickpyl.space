@@ -8,6 +8,14 @@ export function startPreviewTransition(section, updatePage) {
   const video = source?.querySelector('video[data-active="true"], img[data-active="true"], video:not([data-active]), img:not([data-active])');
   const rect = source?.getBoundingClientRect();
   if (!video || (video.tagName === 'IMG' ? !video.complete || !video.naturalWidth : video.readyState < 2) || !rect || rect.right <= 0 || rect.left >= innerWidth || rect.bottom <= 0 || rect.top >= innerHeight) return null;
+  // A partly scrolled-off card produces a clipped snapshot that stretches
+  // on its way home. Use the normal fade when the full card is not visible.
+  const viewport = globalThis.visualViewport;
+  const left = viewport?.offsetLeft ?? 0;
+  const top = viewport?.offsetTop ?? 0;
+  const right = left + (viewport?.width ?? innerWidth);
+  const bottom = top + (viewport?.height ?? innerHeight);
+  if (rect.left < left - 1 || rect.top < top - 1 || rect.right > right + 1 || rect.bottom > bottom + 1) return null;
 
   const time = video.currentTime ?? 0;
   const startedAt = performance.now();

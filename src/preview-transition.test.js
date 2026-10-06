@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { startPreviewTransition } from "./preview-transition.js";
 
-function fixture(t) {
+function fixture(t, bounds = { left: 100, right: 300, top: 100, bottom: 300 }) {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const video = Object.assign(new EventTarget(), { readyState: 0, currentTime: 0, duration: 20, seeking: false });
   const sourceVideo = { readyState: 4, currentTime: 5, videoWidth: 320, videoHeight: 320 };
@@ -10,7 +10,7 @@ function fixture(t) {
   const home = { scrollTop: 42 };
   const page = { querySelectorAll: () => [] };
   const source = { append() {}, style: style(), querySelector: () => sourceVideo, closest: () => home,
-    getBoundingClientRect: () => ({ left: 100, right: 300, top: 100, bottom: 300 }) };
+    getBoundingClientRect: () => bounds };
   const destination = { style: style(), querySelector: () => video, closest: name => name === ".home-page" ? null : page };
   let current = source;
   let callback;
@@ -93,4 +93,10 @@ test("a video timeout keeps the captured frame without delaying the page update"
   assert.equal(f.video.currentTime, 0);
   assert.ok(f.video.poster);
   f.transition.skipTransition();
+});
+
+test("a partially clipped gallery card uses the normal page fade", t => {
+  const f = fixture(t, { left: -96, right: 208, top: 200, bottom: 504 });
+  assert.equal(f.transition, null);
+  assert.equal(f.source.style.viewTransitionName, undefined);
 });

@@ -39,8 +39,11 @@
 .home-destination-shortcut { position:relative; top:-.04em; }
 .home-destination-label { left:50%; top:var(--label-rest-y,36%); font-size:6cqw; opacity:0; transform:translate(-50%,-50%); }
 /* Keep the cursor label outside the home stacking context. */
-.home-destination-tooltip { position:fixed; left:var(--label-x,50%); top:var(--label-y,0); font-size:var(--label-font-size,12px); opacity:0; filter:blur(2px); transform:translate(-50%,calc(-100% + 4px)); transition:opacity 120ms ease,filter 120ms ease,transform 160ms cubic-bezier(.22,1,.36,1),background-color 120ms ease; }
-.home-destination-tooltip[data-pointer-active] { opacity:1; filter:blur(0); transform:translate(-50%,-100%); }
+.home-destination-tooltip { position:fixed; left:var(--label-x,50%); top:var(--label-y,0); font-size:var(--label-font-size,12px); opacity:0; filter:blur(2px); transform:translate(-50%,calc(-50% + 4px)); transition:opacity 120ms ease,filter 120ms ease,transform 160ms cubic-bezier(.22,1,.36,1),background-color 120ms ease; }
+.home-destination-tooltip[data-pointer-active] { opacity:1; filter:blur(0); transform:translate(-50%,-50%); }
+@media (hover:hover) and (pointer:fine) {
+  .home-destinations, .home-destinations * { cursor:none; }
+}
 .home-destination-tooltip[data-phase="leaving"] { opacity:0; }
 .home-destination-tooltip--explorations { background:#32a5ff; }
 .home-destination--explorations { --label-rest-y:68%; }

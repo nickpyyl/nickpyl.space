@@ -77,7 +77,8 @@ export default function Home({ phase, onSelect, onIntent, previews, previewSourc
     const labels = [...destinations.querySelectorAll(".home-destination-label")];
     const halfWidth = Math.max(...labels.map(label => label.offsetWidth)) / 2;
     const x = Math.min(window.innerWidth - halfWidth - 8, Math.max(halfWidth + 8, event.clientX));
-    const y = Math.max(Math.max(...labels.map(label => label.offsetHeight)) + 8, event.clientY - 12);
+    const halfHeight = Math.max(...labels.map(label => label.offsetHeight)) / 2;
+    const y = Math.min(window.innerHeight - halfHeight - 8, Math.max(halfHeight + 8, event.clientY));
     const tooltip = tooltipRef.current;
     tooltip.style.setProperty("--label-x", `${x}px`);
     tooltip.style.setProperty("--label-y", `${y}px`);

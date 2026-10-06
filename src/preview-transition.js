@@ -1,8 +1,12 @@
+import { startMobilePreviewTransition } from './mobile-preview-transition.js';
+
 const homeScrollPositions = new Map();
 
 // Share only the selected clip; the rest of each page retains its blur/fade.
 export function startPreviewTransition(section, updatePage) {
-  if (!document.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return null;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return null;
+  if (matchMedia("(max-width: 700px), (pointer: coarse)").matches) return startMobilePreviewTransition(section, updatePage);
+  if (!document.startViewTransition) return null;
   const selector = `[data-shared-preview="${section}"]`;
   const source = document.querySelector(selector);
   const video = source?.querySelector('video[data-active="true"], img[data-active="true"], video:not([data-active]), img:not([data-active])');

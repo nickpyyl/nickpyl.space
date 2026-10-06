@@ -19,9 +19,9 @@ function setup(t,{currentImage=false,nextImage=false,...options}={}) {
  globalThis.document=document;globalThis.window={matchMedia:()=>motion};globalThis.IntersectionObserver=undefined;
  function video() {
   return Object.assign(new EventTarget(),{
-   ended:false,readyState:4,paused:true,plays:0,frame:null,
+   ended:false,readyState:4,paused:true,plays:0,pauses:0,frame:null,
    play(){this.paused=false;this.plays++;return Promise.resolve();},
-   pause(){this.paused=true;},
+   pause(){this.paused=true;this.pauses++;},
    requestVideoFrameCallback(f){this.frame=f;return 1;},
    cancelVideoFrameCallback(){this.frame=null;},
   });
@@ -78,5 +78,16 @@ test('a pending image waits for loading before the cut',t=>{
  const f=setup(t,{nextImage:true});f.next.complete=false;f.next.naturalWidth=0;
  f.end();assert.equal(f.advances(),0);
  f.next.complete=true;f.next.naturalWidth=2080;f.next.dispatchEvent(new Event('load'));
+ assert.equal(f.advances(),1);
+});
+
+test('navigation lock changes do not pause or restart the preview controller', t => {
+ let allowed=true;
+ const f=setup(t,{canCycle:()=>allowed});
+ allowed=false;f.cleanup.sync();
+ allowed=true;f.cleanup.sync();
+ assert.equal(f.current.pauses,0);
+ assert.equal(f.current.paused,false);
+ f.end();f.next.frame();
  assert.equal(f.advances(),1);
 });

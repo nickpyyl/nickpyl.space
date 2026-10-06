@@ -12,6 +12,7 @@ export function promotePreview(media, src) {
 // Keep the current media visible until the buffered successor is ready.
 // Videos finish naturally; still images stay for their configured duration.
 export function connectPreviewPlayback(video, next, { canCycle, onAdvance, durationMs = 4000 }) {
+  const cyclingAllowed = () => typeof canCycle === 'function' ? canCycle() : canCycle;
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let visible = true, disposed = false, pending = false;
   let frame, timer, holdTimer;
@@ -19,7 +20,7 @@ export function connectPreviewPlayback(video, next, { canCycle, onAdvance, durat
   const nextIsImage = next?.tagName === 'IMG';
   let elapsed = false;
   const ready = media => media?.tagName === 'IMG' ? media.complete && media.naturalWidth > 0 : media?.readyState >= 2;
-  const playable = () => visible && !document.hidden && !motion.matches;
+  const playable = () => video.dataset?.previewBuffering !== 'true' && visible && !document.hidden && !motion.matches;
   function cancelPending() {
     if (frame !== undefined) next?.cancelVideoFrameCallback?.(frame);
     clearTimeout(timer);
@@ -27,7 +28,7 @@ export function connectPreviewPlayback(video, next, { canCycle, onAdvance, durat
     next?.pause?.();
   }
   function advance() {
-    if (!next || !canCycle || !(isImage ? elapsed : video.ended) || !playable() || pending || !ready(next)) return;
+    if (!next || !cyclingAllowed() || !(isImage ? elapsed : video.ended) || !playable() || pending || !ready(next)) return;
     pending = true;
     const reveal = () => {
       if (disposed || !pending) return;
@@ -43,7 +44,7 @@ export function connectPreviewPlayback(video, next, { canCycle, onAdvance, durat
     }).catch(() => { if (!disposed) cancelPending(); });
   }
   function sync() {
-    if (!playable() || (!canCycle && isImage)) {
+    if (!playable() || (!cyclingAllowed() && isImage)) {
       video.pause?.(); cancelPending(); clearTimeout(holdTimer); holdTimer = undefined;
     } else if (isImage) {
       if (elapsed) advance();
@@ -64,7 +65,7 @@ export function connectPreviewPlayback(video, next, { canCycle, onAdvance, durat
   next?.addEventListener('load', advance);
   next?.addEventListener('error', cancelPending);
   sync();
-  return () => {
+  const stop = () => {
     disposed = true;cancelPending();clearTimeout(holdTimer);video.pause?.();observer?.disconnect();
     document.removeEventListener('visibilitychange', sync);
     motion.removeEventListener('change', sync);
@@ -75,4 +76,6 @@ export function connectPreviewPlayback(video, next, { canCycle, onAdvance, durat
     next?.removeEventListener('load', advance);
     next?.removeEventListener('error', cancelPending);
   };
+  stop.sync = sync;
+  return stop;
 }

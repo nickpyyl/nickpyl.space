@@ -23,7 +23,7 @@ export function observeWorkVideo(video, src, { priority = false, sourceFor = get
   }
 
   function syncPlayback() {
-    if (!document.hidden && !video.closest("[inert]") && (visible || video.closest(".media-viewer"))) {
+    if (video.dataset?.previewBuffering !== "true" && !document.hidden && !video.closest("[inert]") && (visible || video.closest(".media-viewer"))) {
       load();
       video.play().catch(() => {});
     } else {

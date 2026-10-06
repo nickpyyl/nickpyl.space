@@ -58,7 +58,7 @@ import explorationMedia16 from "../assets/explorations-media/exploration-16.mp4"
 import explorationMedia17 from "../assets/explorations-media/exploration-17.mp4";
 import explorationMedia18 from "../assets/explorations-media/exploration-18.mp4";
 
-const MEDIA_TRANSITION_MS = 260;
+const getMediaTransitionMs = () => window.matchMedia("(max-width: 960px)").matches ? 340 : 260;
 const MEDIA_SWAP_MS = 220;
 const PAGE_EXIT_MS = 280;
 // Allow the final staggered element to finish before removing the phase class.
@@ -1052,7 +1052,7 @@ function ContentPane({ onSelect, selectedId, previewSrc, transitionKey = 0, tran
     window.clearTimeout(cleanupTimerRef.current);
     cleanupTimerRef.current = window.setTimeout(() => {
       completeClose();
-    }, MEDIA_TRANSITION_MS + 120);
+    }, getMediaTransitionMs() + 120);
   }
 
   function completeClose() {
@@ -1430,7 +1430,7 @@ function PhotographyPane({ onSelect, selectedContent, selectedId, transitionKey,
 
   function scheduleCloseCleanup() {
     window.clearTimeout(cleanupTimerRef.current);
-    cleanupTimerRef.current = window.setTimeout(completeClose, MEDIA_TRANSITION_MS + 120);
+    cleanupTimerRef.current = window.setTimeout(completeClose, getMediaTransitionMs() + 120);
   }
 
   function openMedia(index, sourceElement) {
@@ -1841,8 +1841,6 @@ function MediaViewer({
     };
   }, [isOpen]);
 
-  const transformScale = Math.sqrt(Math.max(transform.scaleX * transform.scaleY, 0.0001));
-
   const stageStyle = rect
     ? {
         height: `${rect.height}px`,
@@ -1851,7 +1849,6 @@ function MediaViewer({
         "--viewer-scale-y": transform.scaleY,
         "--viewer-x": `${transform.x}px`,
         "--viewer-y": `${transform.y}px`,
-        "--viewer-radius-start": `${12 / transformScale}px`,
         top: `${rect.top}px`,
         width: `${rect.width}px`,
       }

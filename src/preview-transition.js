@@ -8,14 +8,14 @@ export function startPreviewTransition(section, updatePage) {
   const video = source?.querySelector('video[data-active="true"], img[data-active="true"], video:not([data-active]), img:not([data-active])');
   const rect = source?.getBoundingClientRect();
   if (!video || (video.tagName === 'IMG' ? !video.complete || !video.naturalWidth : video.readyState < 2) || !rect || rect.right <= 0 || rect.left >= innerWidth || rect.bottom <= 0 || rect.top >= innerHeight) return null;
-  // A partly scrolled-off card produces a clipped snapshot that stretches
-  // on its way home. Use the normal fade when the full card is not visible.
+  // Snapshot clipped cards outside the scrolling rail so their full geometry
+  // survives the return animation, just as it does for an unclipped card.
   const viewport = globalThis.visualViewport;
   const left = viewport?.offsetLeft ?? 0;
   const top = viewport?.offsetTop ?? 0;
   const right = left + (viewport?.width ?? innerWidth);
   const bottom = top + (viewport?.height ?? innerHeight);
-  if (rect.left < left - 1 || rect.top < top - 1 || rect.right > right + 1 || rect.bottom > bottom + 1) return null;
+  const clipped = rect.left < left - 1 || rect.top < top - 1 || rect.right > right + 1 || rect.bottom > bottom + 1;
 
   const time = video.currentTime ?? 0;
   const startedAt = performance.now();
@@ -23,7 +23,17 @@ export function startPreviewTransition(section, updatePage) {
   const poster = frame.poster;
   // Give the outgoing snapshot a painted frame even if unmounting the
   // video releases its compositor surface (most noticeable on return).
-  if (frame.canvas) source.append(frame.canvas);
+  const snapshot = clipped && frame.canvas ? frame.canvas : source;
+  const originalVisibility = source.style.visibility;
+  if (snapshot !== source) {
+    Object.assign(snapshot.style, {
+      position: "fixed", left: `${rect.left}px`, top: `${rect.top}px`,
+      width: `${rect.right - rect.left}px`, height: `${rect.bottom - rect.top}px`,
+      right: "auto", bottom: "auto", zIndex: "100002",
+    });
+    document.body.append(snapshot);
+    source.style.visibility = "hidden";
+  } else if (frame.canvas) source.append(frame.canvas);
   const sourceHome = source.closest(".home-page");
   const returningHome = !sourceHome;
   if (sourceHome) homeScrollPositions.set(section, sourceHome.scrollTop);
@@ -32,12 +42,13 @@ export function startPreviewTransition(section, updatePage) {
   let cleaned = false;
   const revealElements = [];
   let revealStyles;
-  source.style.viewTransitionName = "section-preview";
+  snapshot.style.viewTransitionName = "section-preview";
   const cleanup = () => {
     if (cleaned) return;
     cleaned = true;
     frame.canvas?.remove();
-    source.style.removeProperty("view-transition-name");
+    snapshot.style.removeProperty("view-transition-name");
+    source.style.visibility = originalVisibility;
     destination?.style.removeProperty("view-transition-name");
     for (const element of revealElements) element.style.removeProperty("view-transition-name");
     revealStyles?.remove();
@@ -46,6 +57,7 @@ export function startPreviewTransition(section, updatePage) {
   document.documentElement.dataset.previewReady = "false";
   const transition = document.startViewTransition(() => {
     if (cancelled || !updatePage()) return;
+    if (snapshot !== source) snapshot.remove();
     destination = document.querySelector(selector);
     if (!destination) return;
     const home = destination.closest(".home-page");

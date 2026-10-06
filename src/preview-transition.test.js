@@ -16,12 +16,14 @@ function fixture(t, bounds = { left: 100, right: 300, top: 100, bottom: 300 }) {
   let callback;
   let finish;
   const root = { dataset: {}, removeAttribute() { delete this.dataset.previewReady; } };
+  const overlays = [];
   const doc = {
     documentElement: root,
     querySelector: () => current,
     head: { append() {} },
+    body: { append(element) { overlays.push(element); } },
     createElement: tag => tag === "canvas"
-      ? { remove() {}, getContext: () => ({ drawImage() {} }), toDataURL: () => "data:image/jpeg;base64,frame" }
+      ? { style: style(), remove() { this.removed = true; }, getContext: () => ({ drawImage() {} }), toDataURL: () => "data:image/jpeg;base64,frame" }
       : { remove() {} },
     startViewTransition(update) {
       callback = update;
@@ -34,7 +36,7 @@ function fixture(t, bounds = { left: 100, right: 300, top: 100, bottom: 300 }) {
     t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key]);
   }
   const transition = startPreviewTransition("explorations", () => { current = destination; return true; });
-  return { transition, video, source, destination, root, update: () => callback(), finish: () => finish() };
+  return { transition, video, source, destination, root, overlays, update: () => callback(), finish: () => finish() };
 }
 
 test("navigation does not wait for a slow video; a captured frame covers decoding", async t => {
@@ -95,8 +97,17 @@ test("a video timeout keeps the captured frame without delaying the page update"
   f.transition.skipTransition();
 });
 
-test("a partially clipped gallery card uses the normal page fade", t => {
+test("a partially clipped card keeps the shared transition using its full geometry", t => {
   const f = fixture(t, { left: -96, right: 208, top: 200, bottom: 504 });
-  assert.equal(f.transition, null);
+  assert.ok(f.transition);
+  assert.equal(f.overlays[0].style.width, "304px");
+  assert.equal(f.overlays[0].style.left, "-96px");
+  assert.equal(f.overlays[0].style.viewTransitionName, "section-preview");
+  assert.equal(f.source.style.visibility, "hidden");
   assert.equal(f.source.style.viewTransitionName, undefined);
+  f.update();
+  assert.equal(f.overlays[0].removed, true);
+  assert.equal(f.destination.style.viewTransitionName, "section-preview");
+  f.transition.skipTransition();
+  assert.equal(f.source.style.visibility, undefined);
 });

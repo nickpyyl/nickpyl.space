@@ -518,7 +518,8 @@ function NextPageLink({ currentId, onSelect, horizontal = false }) {
           const distance = Math.min(8, rail.clientWidth * 0.02) * resistance;
           track.dataset.hinting = "false";
           track.dataset.pulling = clampedProgress > 0 ? "true" : "false";
-          track.style.setProperty("--work-overdrag", `${-distance}px`);
+          if (distance > 0) track.style.setProperty("--work-overdrag-transform", `translate3d(${-distance}px,0,0)`);
+          else track.style.removeProperty("--work-overdrag-transform");
           button.style.transform = "";
         } else {
           button.style.transform = clampedProgress > 0
@@ -827,7 +828,7 @@ function NextPageLink({ currentId, onSelect, horizontal = false }) {
       if (track) {
         delete track.dataset.pulling;
         delete track.dataset.hinting;
-        track.style.removeProperty("--work-overdrag");
+        track.style.removeProperty("--work-overdrag-transform");
       }
     };
   }, [nextPage, onSelect, horizontal]);
@@ -1108,13 +1109,29 @@ function ContentPane({ onSelect, selectedId, previewSrc, transitionKey = 0, tran
         const currentRect =
           getStageRect() ?? getCenteredRect(sourceRect, hasMediaCaption(activeMediaIndex));
 
-        setViewerRect(currentRect);
-        setViewerTransform(identityTransform);
-        animationFrameRef.current = window.requestAnimationFrame(() => {
-          animationFrameRef.current = window.requestAnimationFrame(() => {
-            setViewerTransform(getTransformBetweenRects(sourceRect, currentRect));
-          });
+        const stage = mediaViewerStageRef.current;
+        const rail = sourceElement.closest(".work-rail")?.getBoundingClientRect();
+        const clipTop = Math.max(0, Math.max(0, rail?.top ?? 0) - sourceRect.top);
+        const clipRight = Math.max(0, sourceRect.left + sourceRect.width - Math.min(window.innerWidth, rail?.right ?? window.innerWidth));
+        const clipBottom = Math.max(0, sourceRect.top + sourceRect.height - Math.min(window.innerHeight, rail?.bottom ?? window.innerHeight));
+        const clipLeft = Math.max(0, Math.max(0, rail?.left ?? 0) - sourceRect.left);
+        stage?.style.setProperty("--viewer-close-clip", `inset(${clipTop / sourceRect.height * 100}% ${clipRight / sourceRect.width * 100}% ${clipBottom / sourceRect.height * 100}% ${clipLeft / sourceRect.width * 100}%)`);
+        // Freeze the currently presented geometry before reversing, including
+        // when close is tapped before the opening animation has finished.
+        if (stage) stage.style.transition = "none";
+        flushSync(() => {
+          setViewerRect(currentRect);
+          setViewerTransform(identityTransform);
+          setIsViewerSettled(false);
         });
+        stage?.getBoundingClientRect();
+        if (stage) stage.style.transition = "";
+        animationFrameRef.current = window.requestAnimationFrame(() => {
+          setViewerTransform(getTransformBetweenRects(sourceRect, currentRect));
+          setIsViewerOpen(false);
+          scheduleCloseCleanup();
+        });
+        return;
       }
     }
 

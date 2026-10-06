@@ -101,9 +101,9 @@ export default function Home({ phase, onSelect, onIntent, previews, previewSourc
             <p className="home-subtitle">a designer based in Amsterdam</p>
           </header>
           <HoverText>Currently, I design at <a className="home-phantom" href="https://phantom.com/" target="_blank" rel="noreferrer"><InteractiveLabel>Phantom</InteractiveLabel></a>. I also spend probably too much time on my own <a className="home-explorations" href="https://x.com/nickpylll" target="_blank" rel="noreferrer"><InteractiveLabel>design experiments,</InteractiveLabel></a> focused mainly on interactions.</HoverText>
-          <HoverText>Previously, multidisciplinary designer at <a className="home-fuse" href="https://x.com/fusewallet" target="_blank" rel="noreferrer"><InteractiveLabel>Fuse</InteractiveLabel></a>, where I redesigned the experience, and worked across brand and social.</HoverText>
+          <HoverText>Previously, multidisciplinary designer at <a className="home-fuse" href="https://x.com/fusewallet" target="_blank" rel="noreferrer"><InteractiveLabel>Fuse</InteractiveLabel></a>, where<br />I redesigned the experience, and worked across brand and social.</HoverText>
           <footer className="home-contact">
-            <HoverText><span>Reach me at </span><a href="mailto:hello@nickpyl.space"><InteractiveLabel>hello@nickpyl.space</InteractiveLabel></a><span aria-hidden="true"> · </span><a href="https://x.com/nickpylll" target="_blank" rel="noreferrer" aria-label="Nick Pyl on X"><InteractiveLabel>X</InteractiveLabel></a></HoverText>
+            <HoverText><span>Say hi via </span><a href="mailto:hello@nickpyl.space"><InteractiveLabel>email</InteractiveLabel></a><span>, </span><a href="https://www.instagram.com/nickphylm/" target="_blank" rel="noreferrer" aria-label="Nick Pyl on Instagram"><InteractiveLabel>Instagram</InteractiveLabel></a><span>, or </span><a href="https://x.com/nickpylll" target="_blank" rel="noreferrer" aria-label="Nick Pyl on X"><InteractiveLabel>X</InteractiveLabel></a><span>.</span></HoverText>
             <img src={signature} alt="Nick Pyl signature" width="280" height="104" />
           </footer>
           <nav

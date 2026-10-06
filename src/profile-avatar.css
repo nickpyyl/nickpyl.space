@@ -1,0 +1,12 @@
+.profile-avatar { position:relative; isolation:isolate; display:block; flex-shrink:0; width:32px; height:32px; margin:0 0 6px; padding:0; border:0; border-radius:0; background:none; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.profile-avatar::before { content:""; position:absolute; z-index:1; inset:0; background:var(--avatar-ink); clip-path:inset(50%); transition:clip-path 220ms cubic-bezier(.22,1,.36,1); pointer-events:none; }
+.profile-avatar:focus-visible { outline:2px solid var(--avatar-ink); outline-offset:5px; }
+.profile-avatar-photo { position:relative; display:block; width:100%; height:100%; object-fit:cover; pointer-events:none; }
+.profile-avatar:focus-visible::before, .profile-avatar:active::before { clip-path:inset(0); }
+@media (hover:hover) and (pointer:fine) {
+  .profile-avatar:hover { cursor:none; }
+  .profile-avatar:hover::before { clip-path:inset(0); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .profile-avatar::before { transition:none; }
+}

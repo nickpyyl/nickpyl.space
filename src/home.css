@@ -1,7 +1,6 @@
 .home-page { position:fixed; inset:0; display:flex; flex-direction:column; overflow-x:hidden; overflow-y:auto; background:#fff; color:#161616; }
 .home-column { flex-shrink:0; width:400px; max-width:calc(100% - 48px); margin:auto; padding:64px 0; font-size:16px; line-height:1.34; letter-spacing:0; }
 .home-intro { display:flex; flex-direction:column; gap:18px; }
-.home-portrait { width:32px; height:32px; object-fit:cover; margin-bottom:6px; }
 .home-intro h1, .home-intro p { font-size:inherit; font-weight:400; line-height:inherit; margin:0; }
 .home-intro .home-subtitle { color:#a0a0a0; }
 .home-intro a:hover { text-decoration:none; }

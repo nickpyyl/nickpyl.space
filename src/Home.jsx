@@ -1,6 +1,6 @@
 import { Children, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import portrait from "../assets/avatar-nick-small.png";
+import ProfileAvatar from "./ProfileAvatar.jsx";
 import signature from "../assets/signature-new-small.png";
 import { sectionPaths } from "./routes.js";
 import "./home.css";
@@ -96,7 +96,7 @@ export default function Home({ phase, onSelect, onIntent, previews, previewSourc
     <main className={`home-page home-page--${phase}`} aria-label="About Nick Pyl">
       <div className="home-column">
         <section className="home-intro">
-          <img className="home-portrait" src={portrait} width="32" height="32" alt="Nick Pyl" />
+          <ProfileAvatar />
           <header>
             <h1>Hey there, I’m Nick Pyl</h1>
             <p className="home-subtitle">a designer based in Amsterdam</p>

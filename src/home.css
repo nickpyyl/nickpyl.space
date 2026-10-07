@@ -38,12 +38,14 @@
 .home-destination-shortcut { position:relative; top:-.04em; }
 .home-destination-label { left:50%; top:var(--label-rest-y,36%); font-size:6cqw; opacity:0; transform:translate(-50%,-50%); }
 /* Keep the cursor label outside the home stacking context. */
-.home-destination-tooltip { position:fixed; left:var(--label-x,50%); top:var(--label-y,0); font-size:var(--label-font-size,12px); opacity:0; filter:blur(2px); transform:translate(-50%,calc(-50% + 4px)); transition:opacity 120ms ease,filter 120ms ease,transform 160ms cubic-bezier(.22,1,.36,1),background-color 120ms ease; }
-.home-destination-tooltip[data-pointer-active] { opacity:1; filter:blur(0); transform:translate(-50%,-50%); }
+/* Only entering/leaving the sections reveals or collapses the label.
+   Crossing between cards keeps it open, with a brief color change. */
+.home-destination-tooltip { position:fixed; left:var(--label-x,50%); top:var(--label-y,0); font-size:var(--label-font-size,12px); opacity:0; clip-path:inset(0 calc(50% - 1px)); transform:translate(-50%,-50%); transition:clip-path 140ms cubic-bezier(.4,0,.2,1),opacity 80ms ease 40ms,background-color 90ms ease; }
+.home-destination-tooltip[data-pointer-active] { opacity:1; clip-path:inset(0 0); transition:clip-path 170ms cubic-bezier(.22,.7,.25,1),opacity 100ms ease,background-color 90ms ease; }
 @media (hover:hover) and (pointer:fine) {
   .home-destinations, .home-destinations * { cursor:none; }
 }
-.home-destination-tooltip[data-phase="leaving"] { opacity:0; }
+.home-destination-tooltip[data-phase="leaving"] { animation:none; opacity:0; clip-path:inset(0 calc(50% - 1px)); transition:clip-path 140ms cubic-bezier(.4,0,.2,1),opacity 80ms ease 40ms; }
 .home-destination-tooltip--explorations { background:#32a5ff; }
 .home-destination--explorations { --label-rest-y:68%; }
 .home-destination--explorations .home-destination-label { background:#32a5ff; }
@@ -74,6 +76,7 @@
   .home-destination-tooltip { display:none; }
 }
 @media (prefers-reduced-motion:reduce) {
+  .home-destination-tooltip[data-pointer-active], .home-destination-tooltip[data-phase="leaving"] { animation:none; clip-path:none; transition:none; }
   .home-preview-video { transition:none; }
   .home-page .home-column, .home-page .home-intro > * { animation:none; transition:none; filter:none; opacity:1; }
   .home-hover-text > *, .home-page .home-intro .interactive-label, .home-destination-tooltip { transition:none; }

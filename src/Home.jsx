@@ -6,6 +6,8 @@ import { sectionPaths } from "./routes.js";
 import "./home.css";
 import InteractiveLabel from "./InteractiveLabel.jsx";
 import HomePreview from "./HomePreview.jsx";
+import { needsSafariPreviewSnapshot } from './safari-preview-snapshot.js';
+import { createDestinationPointer } from './destination-pointer.js';
 
 export function navigateFromLink(event, id, onSelect) {
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -58,16 +60,27 @@ function DestinationLabel({ destination }) {
 export default function Home({ phase, onSelect, onIntent, previews, previewSources, canCycle, onPreviewAdvance }) {
   const [hoveredDestination, setHoveredDestination] = useState("work");
   const tooltipRef = useRef(null);
+  const navRef = useRef(null);
+  const pointerRef = useRef(null);
+  const [safariDesktop] = useState(() => needsSafariPreviewSnapshot() && !window.matchMedia('(max-width: 700px), (max-width: 960px) and (pointer: coarse)').matches);
 
   useEffect(() => {
+    if (safariDesktop) pointerRef.current = createDestinationPointer(navRef.current, tooltipRef.current, setHoveredDestination);
     const hideOnScroll = () => {
+      pointerRef.current?.hide();
       if (tooltipRef.current) delete tooltipRef.current.dataset.pointerActive;
     };
     window.addEventListener("scroll", hideOnScroll, true);
-    return () => window.removeEventListener("scroll", hideOnScroll, true);
-  }, []);
+    window.addEventListener("resize", hideOnScroll);
+    return () => {
+      pointerRef.current?.dispose(); pointerRef.current = null;
+      window.removeEventListener("scroll", hideOnScroll, true);
+      window.removeEventListener("resize", hideOnScroll);
+    };
+  }, [safariDesktop]);
 
   function trackDestinationLabel(event) {
+    if (safariDesktop) { pointerRef.current?.move(event); return; }
     if (event.pointerType === "touch") return;
     const destinations = event.currentTarget;
     const bounds = destinations.getBoundingClientRect();
@@ -88,6 +101,7 @@ export default function Home({ phase, onSelect, onIntent, previews, previewSourc
   }
 
   function hideDestinationLabel(event) {
+    pointerRef.current?.hide();
     delete event.currentTarget.dataset.pointerActive;
     delete tooltipRef.current.dataset.pointerActive;
   }
@@ -108,6 +122,7 @@ export default function Home({ phase, onSelect, onIntent, previews, previewSourc
             <img src={signature} alt="Nick Pyl signature" width="280" height="104" />
           </footer>
           <nav
+            ref={navRef}
             className="home-destinations"
             aria-label="Explore"
             onPointerEnter={trackDestinationLabel}
@@ -147,7 +162,7 @@ export default function Home({ phase, onSelect, onIntent, previews, previewSourc
               <span className="home-destination-label" aria-hidden="true"><DestinationLabel destination="explorations" /></span>
               <kbd className="home-destination-key" aria-hidden="true">E</kbd>
             </a>
-            {createPortal(<span ref={tooltipRef} className={`home-destination-tooltip home-destination-tooltip--${hoveredDestination}`} data-phase={phase} aria-hidden="true">
+            {createPortal(<span ref={tooltipRef} className={`home-destination-tooltip home-destination-tooltip--${hoveredDestination}${safariDesktop ? ' home-destination-tooltip--safari' : ''}`} data-phase={phase} aria-hidden="true">
               <DestinationLabel destination={hoveredDestination} />
             </span>, document.body)}
             <span className="home-object-instructions" id="home-object-controls">Click or press Enter to open. Press S for Selected work or E for Explorations.</span>

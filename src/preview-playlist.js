@@ -3,6 +3,13 @@ export function nextPreview(clips, src) {
   return clips[(index + 1) % clips.length];
 }
 
+// Safari keeps the decoded active video in its existing DOM slot when the
+// buffered successor is promoted; only the other slot receives a new source.
+export function stablePreviewSlots(previous, active, next) {
+  if (active.src === next.src) return [active];
+  return previous.findIndex(item => item.src === active.src) === 1 ? [next, active] : [active, next];
+}
+
 // Keep every gallery item, including stills, and preserve the remaining order.
 export function promotePreview(media, src) {
   const index = media.findIndex(item => item.src === src);

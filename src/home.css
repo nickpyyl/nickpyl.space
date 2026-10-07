@@ -42,6 +42,7 @@
    Crossing between cards keeps it open, with a brief color change. */
 .home-destination-tooltip { position:fixed; left:var(--label-x,50%); top:var(--label-y,0); font-size:var(--label-font-size,12px); opacity:0; clip-path:inset(0 calc(50% - 1px)); transform:translate(-50%,-50%); transition:clip-path 140ms cubic-bezier(.4,0,.2,1),opacity 80ms ease 40ms,background-color 90ms ease; }
 .home-destination-tooltip[data-pointer-active] { opacity:1; clip-path:inset(0 0); transition:clip-path 170ms cubic-bezier(.22,.7,.25,1),opacity 100ms ease,background-color 90ms ease; }
+.home-destination-tooltip--safari { left:0; top:0; transform:translate3d(var(--label-x,0px),var(--label-y,0px),0) translate(-50%,-50%); will-change:transform,clip-path; }
 @media (hover:hover) and (pointer:fine) {
   .home-destinations, .home-destinations * { cursor:none; }
 }

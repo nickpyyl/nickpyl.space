@@ -58,6 +58,7 @@ test('the original video plays directly without a per-frame canvas copy', async 
   const f = fixture(t, true);
   f.snapshot.stage(f.target, f.video);
   assert.equal(f.sourceVideo.playing, true);
+  assert.equal(f.video.loop, true);
   assert.equal(f.sourceVideo.style.opacity, '0');
   f.sourceVideo.present();
   assert.equal(f.sourceVideo.style.opacity, '1');
@@ -70,11 +71,13 @@ test('the original video plays directly without a per-frame canvas copy', async 
   assert.equal(f.video.currentTime, 5.4);
   assert.equal(f.layer.removed, undefined);
   f.video.present();
+  f.video.present(); // A second presented frame confirms the two live clocks align.
   await f.finish();
   assert.equal(f.layer.removed, true);
   assert.equal(f.sourceVideo.playing, false);
   assert.equal(f.sourceVideo.present, undefined);
   assert.equal(f.sourceVideo.loop, false);
+  assert.equal(f.video.loop, false);
 });
 
 test('interrupting Safari handoff cancels late paints and restores the card', t => {
@@ -85,6 +88,7 @@ test('interrupting Safari handoff cancels late paints and restores the card', t 
   f.paint(); f.paint();
   assert.equal(f.video.currentTime, 0);
   assert.equal(f.video.dataset.previewBuffering, undefined);
+  assert.equal(f.video.loop, false);
   assert.equal(f.target.style.opacity, '');
   assert.equal(f.layer.removed, true);
   assert.equal(f.sourceVideo.playing, false);

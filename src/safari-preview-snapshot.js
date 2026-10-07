@@ -1,4 +1,5 @@
 import { coverUntilPresented } from './mobile-preview-transition.js';
+import { alignSafariVideo } from './safari-video-handoff.js';
 
 export function needsSafariPreviewSnapshot(navigator = globalThis.navigator) {
   return /Apple/.test(navigator?.vendor ?? '') && /Safari\//.test(navigator?.userAgent ?? '') && !/CriOS|FxiOS|EdgiOS/.test(navigator?.userAgent ?? '');
@@ -17,7 +18,7 @@ export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
   const originalStyle = liveVideo?.getAttribute('style');
   const originalLoop = liveVideo?.loop;
   const originalAriaHidden = liveVideo?.getAttribute('aria-hidden');
-  let destination, destinationOpacity, stopWaiting, observer, bufferedMedia, paintFrame, videoFrame, fade;
+  let destination, destinationOpacity, stopWaiting, stopAligning, observer, bufferedMedia, bufferedLoop, paintFrame, videoFrame, fade;
   let cancelled = false, removed = false;
   const followDestination = () => {
     if (destination?.isConnected) place(destination);
@@ -58,7 +59,9 @@ export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
     if (paintFrame !== undefined) cancelAnimationFrame(paintFrame);
     fade?.cancel();
     stopWaiting?.();
+    stopAligning?.();
     bufferedMedia?.removeAttribute('data-preview-buffering');
+    if (bufferedMedia?.tagName === 'VIDEO') bufferedMedia.loop = bufferedLoop;
     observer?.disconnect();
     globalThis.removeEventListener?.('scroll', followDestination, true);
     globalThis.removeEventListener?.('resize', followDestination);
@@ -77,6 +80,10 @@ export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
     layer,
     stage(target, media) {
       bufferedMedia = media;
+      bufferedLoop = media?.loop;
+      // A clip ending during the handoff must not rotate out from under its
+      // live cover before the two playback surfaces have been aligned.
+      if (media?.tagName === 'VIDEO') media.loop = true;
       media?.setAttribute('data-preview-buffering', 'true');
       media?.pause?.();
       destination = target;
@@ -110,8 +117,13 @@ export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
           if (cancelled) return;
           stopWaiting = coverUntilPresented(media, liveVideo ? () => liveVideo.currentTime : time, () => {
             if (removed) return;
-            fade = layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: 'ease', fill: 'both' });
-            fade.finished.catch(() => {}).finally(remove);
+            const reveal = () => {
+              if (removed) return;
+              fade = layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 80, easing: 'ease', fill: 'both' });
+              fade.finished.catch(() => {}).finally(remove);
+            };
+            if (liveVideo && media.tagName === 'VIDEO') stopAligning = alignSafariVideo(liveVideo, media, reveal);
+            else reveal();
           });
         });
       });

@@ -1,6 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { nextPreview, promotePreview, connectPreviewPlayback } from './preview-playlist.js';
+import { nextPreview, promotePreview, connectPreviewPlayback, stablePreviewSlots } from './preview-playlist.js';
+
+test('Safari promotion keeps the decoded successor in the same DOM slot across rotations', () => {
+ const clips = [{src:'a'},{src:'b'},{src:'c'}];
+ let slots = stablePreviewSlots([],clips[0],clips[1]);
+ for (let i=1;i<10;i++) {
+  const active=clips[i%3],next=clips[(i+1)%3];
+  const index=slots.indexOf(active);
+  slots=stablePreviewSlots(slots,active,next);
+  assert.equal(slots.indexOf(active),index);
+  assert.ok(slots.includes(next));
+ }
+});
 
 test('promoting a preview preserves every image/video and the remaining order',()=>{
  const media=[{src:'a'},{src:'still'},{src:'b'},{src:'c'}];

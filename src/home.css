@@ -87,6 +87,7 @@
 .home-page--entering .home-intro > :nth-child(6) { animation-delay:100ms; }
 .home-page--entering .home-intro > :not(.home-destinations) { animation:preview-text-in 520ms ease both; }
 @media (max-width:600px) {
+  .home-bio-break { display:none; }
   .home-column { padding-block:56px; }
   .home-contact { gap:12px; }
   .home-contact img { width:56px; }

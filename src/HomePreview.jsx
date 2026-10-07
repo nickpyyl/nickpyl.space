@@ -6,6 +6,8 @@ export default function HomePreview({ clips, activeSrc, section, canCycle, onAdv
   const playback = useRef(null);
   const cycleAllowed = useRef(canCycle);
   cycleAllowed.current = canCycle;
+  // Desktop retains its original controller lifecycle; mobile borrows the live video.
+  const desktopCycle = window.matchMedia("(max-width: 700px), (max-width: 960px) and (pointer: coarse)").matches ? null : canCycle;
   const clip = clips.find(item => item.src === activeSrc) ?? clips[0];
   const next = nextPreview(clips, clip.src);
   const buffered = next.src === clip.src ? [clip] : [clip, next];
@@ -18,7 +20,7 @@ export default function HomePreview({ clips, activeSrc, section, canCycle, onAdv
     });
     playback.current = stop;
     return () => { playback.current = null; stop(); };
-  }, [clip.src, clip.durationMs, next.src, section, onAdvance]);
+  }, [clip.src, clip.durationMs, next.src, section, onAdvance, desktopCycle]);
 
   useEffect(() => { playback.current?.sync(); }, [canCycle]);
 

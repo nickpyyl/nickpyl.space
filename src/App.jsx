@@ -1841,6 +1841,7 @@ function MediaViewer({
     };
   }, [isOpen]);
 
+  const transformScale = Math.sqrt(Math.max(transform.scaleX * transform.scaleY, 0.0001));
   const stageStyle = rect
     ? {
         height: `${rect.height}px`,
@@ -1849,6 +1850,7 @@ function MediaViewer({
         "--viewer-scale-y": transform.scaleY,
         "--viewer-x": `${transform.x}px`,
         "--viewer-y": `${transform.y}px`,
+        "--viewer-radius-start": `${12 / transformScale}px`,
         top: `${rect.top}px`,
         width: `${rect.width}px`,
       }

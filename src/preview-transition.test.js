@@ -97,17 +97,15 @@ test("a video timeout keeps the captured frame without delaying the page update"
   f.transition.skipTransition();
 });
 
-test("a partially clipped card keeps the shared transition using its full geometry", t => {
+test("desktop retains its original shared source rather than creating a mobile overlay", t => {
   const f = fixture(t, { left: -96, right: 208, top: 200, bottom: 504 });
-  assert.ok(f.transition);
-  assert.equal(f.overlays[0].style.width, "304px");
-  assert.equal(f.overlays[0].style.left, "-96px");
-  assert.equal(f.overlays[0].style.viewTransitionName, "section-preview");
-  assert.equal(f.source.style.visibility, "hidden");
-  assert.equal(f.source.style.viewTransitionName, undefined);
+  assert.ok(f.transition.finished);
+  assert.equal(f.overlays.length, 0);
+  assert.equal(f.source.style.viewTransitionName, "section-preview");
+  assert.equal(f.source.style.visibility, undefined);
   f.update();
-  assert.equal(f.overlays[0].removed, true);
   assert.equal(f.destination.style.viewTransitionName, "section-preview");
   f.transition.skipTransition();
-  assert.equal(f.source.style.visibility, undefined);
+  assert.equal(f.source.style.viewTransitionName, undefined);
+  assert.equal(f.destination.style.viewTransitionName, undefined);
 });

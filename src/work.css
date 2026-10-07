@@ -27,7 +27,7 @@
 .work-rail { width:100%; overflow-x:auto; overflow-y:hidden; margin-top:40px; padding:0; scrollbar-width:none; overscroll-behavior-x:contain; }
 .work-rail::-webkit-scrollbar { display:none; }
 .work-rail:focus-visible { outline:1px dashed #ddd; outline-offset:-1px; }
-.work-rail-track { display:flex; width:max-content; gap:var(--work-gap); align-items:flex-start; transform:var(--work-overdrag-transform,none); transition:transform 320ms cubic-bezier(.22,1,.36,1); }
+.work-rail-track { display:flex; width:max-content; gap:var(--work-gap); align-items:flex-start; transform:var(--work-overdrag-transform,translate3d(0,0,0)); transition:transform 320ms cubic-bezier(.22,1,.36,1); }
 .work-rail-track[data-pulling="true"] { transition:transform 70ms linear; }
 .work-rail-track[data-hinting="true"] { animation:work-overdrag-hint 355ms both; }
 @keyframes work-overdrag-hint {
@@ -43,7 +43,7 @@
 .work-piece figcaption { color:#a0a0a0; margin-top:10px; font-size:13px; line-height:1.4; }
 .work-rail-end { flex:0 0 auto; width:max-content; height:var(--work-size); display:grid; place-items:start; padding:0 var(--work-gap) 0 0; }
 .work-rail-end .next-page-link { margin:0; align-self:start; transform:none; }
-.work-intro, .work-piece, .work-rail-end { opacity:1; filter:none; }
+.work-intro, .work-piece, .work-rail-end { opacity:1; filter:blur(0); }
 .selected-work-page.content-pane--leaving :is(.work-intro, .work-piece, .work-rail-end) { animation:page-fade-out 280ms ease-in-out both; }
 .selected-work-page.content-pane--entering :is(.work-intro > *, .work-piece, .work-rail-end) { animation:page-reveal 620ms cubic-bezier(.25,.1,.25,1) var(--page-reveal-delay, 0ms) both; }
 .selected-work-page.content-pane--leaving .work-intro { animation:preview-root-out 260ms ease-in-out both; }
@@ -87,4 +87,10 @@ html[data-preview-ready="true"]::view-transition-new(section-preview) { opacity:
 }
 @media (prefers-reduced-motion:reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation:none !important; }
+}
+
+/* Keep the mobile rendering optimizations out of the desktop snapshot path. */
+@media (max-width:700px), (max-width:960px) and (pointer:coarse) {
+  .work-rail-track { transform:var(--work-overdrag-transform,none); }
+  .work-intro, .work-piece, .work-rail-end { filter:none; }
 }

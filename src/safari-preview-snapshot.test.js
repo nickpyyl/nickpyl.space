@@ -62,7 +62,10 @@ test('the original video plays directly without a per-frame canvas copy', async 
   f.sourceVideo.present();
   assert.equal(f.sourceVideo.style.opacity, '1');
   f.sourceVideo.currentTime = 5.4;
+  const boundsBeforeHandoff = { ...f.layer.style };
   f.snapshot.finish(f.video, 99);
+  assert.deepEqual(f.layer.style, boundsBeforeHandoff, 'handoff must preserve border-box geometry');
+  assert.equal(f.target.cover, undefined, 'live surface stays in the same parent until it is released');
   f.paint(); f.paint();
   assert.equal(f.video.currentTime, 5.4);
   assert.equal(f.layer.removed, undefined);

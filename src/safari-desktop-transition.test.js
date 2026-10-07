@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { startSafariDesktopTransition } from './safari-desktop-transition.js';
+import { sharedPreviewFrames, startSafariDesktopTransition } from './safari-desktop-transition.js';
 
 function fixture(t) {
   const animations = [];
@@ -46,10 +46,8 @@ test('Safari moves only the shared card; captions fade in place without native s
   await Promise.resolve();
   const motion = f.animations.find(a => a.name === 'shared-layer');
   assert.equal(motion.options.duration, 440);
-  assert.deepEqual(motion.frames, [
-    { transform: 'translate(-60px,-150px)', width: '200px', height: '200px' },
-    { transform: 'translate(0,0)', width: '360px', height: '270px' },
-  ]);
+  assert.ok(motion.frames.every(frame => !('width' in frame) && !('height' in frame)));
+  assert.equal(motion.frames.at(-1).transform, 'translate(0px,0px) scale(1)');
   const caption = f.animations.find(a => a.name === 'caption');
   assert.equal(caption.options.delay, 240);
   assert.ok(caption.frames.every(frame => !('transform' in frame) && !('left' in frame) && !('top' in frame)));
@@ -58,6 +56,26 @@ test('Safari moves only the shared card; captions fade in place without native s
   await f.transition.finished;
   assert.equal(f.layer.removed, true);
   assert.equal(f.copy.removed, true);
+});
+
+test('compositor crops preserve the intended bounds and proportions for wide and tall clips', () => {
+  for (const [width, height] of [[360, 270], [270, 400], [400, 400]]) {
+    const home = { left: 100, top: 500, width: 196, height: 196 };
+    const gallery = { left: 50, top: 220, width, height };
+    for (const [from, to] of [[home, gallery], [gallery, home]]) {
+      const aspect = width / height;
+      const base = { ...to, width: Math.max(to.width, to.height * aspect), height: Math.max(to.height, to.width / aspect) };
+      for (const frame of sharedPreviewFrames(from, to, base)) {
+        const [x, y, scale] = frame.transform.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/g).map(Number);
+        const [insetY, insetX] = frame.clipPath.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/g).map(Number);
+        const mix = (a, b) => a + (b - a) * frame.offset;
+        const actual = [to.left + x + insetX * scale, to.top + y + insetY * scale,
+          (base.width - insetX * 2) * scale, (base.height - insetY * 2) * scale];
+        const expected = [mix(from.left, to.left), mix(from.top, to.top), mix(from.width, to.width), mix(from.height, to.height)];
+        actual.forEach((value, i) => assert.ok(Math.abs(value - expected[i]) < .001));
+      }
+    }
+  }
 });
 
 test('cancelling Safari navigation before its update leaves no overlays or page swap', async t => {

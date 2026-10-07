@@ -34,13 +34,11 @@ export function startSafariDesktopTransition(section, updatePage) {
     const destinationHome = destination.closest('.home-page');
     if (destinationHome) destinationHome.scrollTop = scrollPositions.get(section) ?? 0;
     const to = destination.getBoundingClientRect();
-    shared.stage(destination, nextMedia);
-    // The live media uses object-fit throughout the resize, so differently shaped
-    // clips crop smoothly rather than being stretched by independent x/y scales.
-    const motion = shared.layer.animate([
-      { transform: `translate(${from.left - to.left}px,${from.top - to.top}px)`, width: `${from.width}px`, height: `${from.height}px` },
-      { transform: 'translate(0,0)', width: `${to.width}px`, height: `${to.height}px` },
-    ], { duration: 440, easing: 'cubic-bezier(.22,.8,.25,1)', fill: 'both' });
+    const base = shared.stage(destination, nextMedia);
+    // Keep the decoder surface at its final size. Scale and crop on the
+    // compositor instead of resizing a live Safari video on every frame.
+    const motion = shared.layer.animate(sharedPreviewFrames(from, to, base),
+      { duration: 440, easing: 'cubic-bezier(.22,.8,.25,1)', fill: 'both' });
     animations.push(motion);
     if (outgoing) {
       const exit = outgoing.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, easing: 'ease-out', fill: 'both' });
@@ -73,6 +71,23 @@ export function startSafariDesktopTransition(section, updatePage) {
   return { finished, skipTransition: cancel };
 }
 
+export function sharedPreviewFrames(from, to, base = to) {
+  // Uniform scale preserves the clip's proportions. Insets interpolate the
+  // square home crop into the gallery's aspect ratio without stretching it.
+  return Array.from({ length: 33 }, (_, index) => {
+    const progress = index / 32;
+    const mix = (a, b) => a + (b - a) * progress;
+    const width = mix(from.width, to.width), height = mix(from.height, to.height);
+    const scale = Math.max(width / base.width, height / base.height);
+    const insetX = Math.max(0, (base.width - width / scale) / 2);
+    const insetY = Math.max(0, (base.height - height / scale) / 2);
+    const x = mix(from.left, to.left) - to.left - insetX * scale;
+    const y = mix(from.top, to.top) - to.top - insetY * scale;
+    return { offset: progress, transform: `translate(${x}px,${y}px) scale(${scale})`,
+      clipPath: `inset(${insetY}px ${insetX}px)` };
+  });
+}
+
 function capture(media) {
   const canvas = document.createElement('canvas');
   const width = media.videoWidth || media.naturalWidth;
@@ -97,7 +112,8 @@ function capturePage(page, selector) {
   for (const [index, video] of [...copy.querySelectorAll('video')].entries()) {
     const original = originals[index];
     const rect = original.getBoundingClientRect();
-    const visible = original.readyState >= 2 && rect.right > 0 && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight;
+    const visible = original.dataset.active !== 'false' && !original.closest(selector)
+      && original.readyState >= 2 && rect.right > 0 && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight;
     const frame = visible ? capture(original) : null;
     if (frame) {
       frame.className = original.className;

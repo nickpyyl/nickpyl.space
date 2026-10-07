@@ -19,13 +19,24 @@ export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
   const originalAriaHidden = liveVideo?.getAttribute('aria-hidden');
   let destination, destinationOpacity, stopWaiting, observer, bufferedMedia, paintFrame, videoFrame, fade;
   let cancelled = false, removed = false;
+  const followDestination = () => {
+    if (destination?.isConnected) place(destination);
+    else remove();
+  };
   const place = element => {
     const rect = element.getBoundingClientRect();
+    const aspect = canvas.width && canvas.height ? canvas.width / canvas.height : rect.width / rect.height;
+    const width = Math.max(rect.width, rect.height * aspect);
+    const height = Math.max(rect.height, rect.width / aspect);
+    const insetX = (width - rect.width) / 2, insetY = (height - rect.height) / 2;
     Object.assign(layer.style, {
       position: 'fixed', inset: 'auto', left: `${rect.left}px`, top: `${rect.top}px`,
-      width: `${rect.width ?? rect.right - rect.left}px`, height: `${rect.height ?? rect.bottom - rect.top}px`,
+      width: `${width}px`, height: `${height}px`,
+      transform: `translate(${-insetX}px,${-insetY}px) scale(1)`, clipPath: `inset(${insetY}px ${insetX}px)`,
       zIndex: '100002', pointerEvents: 'none', transformOrigin: '0 0', overflow: 'hidden',
+      willChange: 'transform, clip-path',
     });
+    return { left: rect.left, top: rect.top, width, height };
   };
   const mediaStyle = { position: 'absolute', inset: '0', width: '100%', height: '100%',
     maxWidth: 'none', objectFit: 'cover', borderRadius: '0', transform: 'none' };
@@ -49,6 +60,8 @@ export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
     stopWaiting?.();
     bufferedMedia?.removeAttribute('data-preview-buffering');
     observer?.disconnect();
+    globalThis.removeEventListener?.('scroll', followDestination, true);
+    globalThis.removeEventListener?.('resize', followDestination);
     if (liveVideo) {
       liveVideo.loop = originalLoop;
       if (originalAriaHidden === null) liveVideo.removeAttribute('aria-hidden');
@@ -69,20 +82,24 @@ export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
       destination = target;
       destinationOpacity = target.style.opacity;
       target.style.opacity = '0';
-      place(target);
+      const base = place(target);
       if (liveVideo) {
         const reveal = () => { if (!removed) liveVideo.style.opacity = '1'; };
         if (liveVideo.requestVideoFrameCallback) videoFrame = liveVideo.requestVideoFrameCallback(reveal);
         else reveal();
         liveVideo.play()?.catch(() => {});
       }
+      return base;
     },
     finish(media, time) {
       if (cancelled) return;
       source.style.opacity = sourceOpacity;
       if (!destination?.isConnected) { remove(); return; }
-      Object.assign(layer.style, { position: 'absolute', inset: '0', left: '0', top: '0', width: '100%', height: '100%', zIndex: '1', transform: 'none' });
-      destination.append(layer);
+      // Keep the same parent and border-box geometry through the crossfade.
+      // Reparenting into a bordered home card shrinks the cover by two pixels
+      // and can make WebKit rebuild its video compositing surface.
+      globalThis.addEventListener?.('scroll', followDestination, true);
+      globalThis.addEventListener?.('resize', followDestination);
       destination.style.opacity = destinationOpacity;
       if (typeof MutationObserver !== 'undefined') {
         observer = new MutationObserver(() => { if (!destination.isConnected) remove(); });

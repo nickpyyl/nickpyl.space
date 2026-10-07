@@ -4,9 +4,12 @@ export function needsSafariPreviewSnapshot(navigator = globalThis.navigator) {
   return /Apple/.test(navigator?.vendor ?? '') && /Safari\//.test(navigator?.userAgent ?? '') && !/CriOS|FxiOS|EdgiOS/.test(navigator?.userAgent ?? '');
 }
 
-// Keep desktop geometry/easing, but render the playing video into a canvas.
-// Safari snapshots this live surface without moving its native video layer.
+// Borrow the existing video in one directly animated DOM layer. No native
+// view snapshots, new decoder, or per-frame video-to-canvas readback.
 export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
+  const layer = document.createElement('div');
+  layer.className = 'preview-handoff-frame';
+  layer.setAttribute('aria-hidden', 'true');
   const sourceOpacity = source.style.opacity;
   const liveVideo = sourceMedia?.tagName === 'VIDEO' ? sourceMedia : null;
   const originalParent = liveVideo?.parentNode;
@@ -14,40 +17,38 @@ export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
   const originalStyle = liveVideo?.getAttribute('style');
   const originalLoop = liveVideo?.loop;
   const originalAriaHidden = liveVideo?.getAttribute('aria-hidden');
-  let videoFrame, fallbackFrame, removed = false;
-  const context = liveVideo ? canvas.getContext('2d') : null;
-  const paintVideo = () => {
-    if (removed) return;
-    if (liveVideo.readyState >= 2) context.drawImage(liveVideo, 0, 0, canvas.width, canvas.height);
-    if (liveVideo.requestVideoFrameCallback) videoFrame = liveVideo.requestVideoFrameCallback(paintVideo);
-    else fallbackFrame = requestAnimationFrame(paintVideo);
-  };
-  let destination, destinationOpacity, stopWaiting, observer, bufferedMedia, paintFrame, cancelled = false;
+  let destination, destinationOpacity, stopWaiting, observer, bufferedMedia, paintFrame, videoFrame, fade;
+  let cancelled = false, removed = false;
   const place = element => {
     const rect = element.getBoundingClientRect();
-    Object.assign(canvas.style, {
+    Object.assign(layer.style, {
       position: 'fixed', inset: 'auto', left: `${rect.left}px`, top: `${rect.top}px`,
       width: `${rect.width ?? rect.right - rect.left}px`, height: `${rect.height ?? rect.bottom - rect.top}px`,
-      zIndex: '100002', pointerEvents: 'none', viewTransitionName: 'section-preview',
+      zIndex: '100002', pointerEvents: 'none', transformOrigin: '0 0', overflow: 'hidden',
     });
   };
-  canvas.setAttribute('aria-hidden', 'true');
+  const mediaStyle = { position: 'absolute', inset: '0', width: '100%', height: '100%',
+    maxWidth: 'none', objectFit: 'cover', borderRadius: '0', transform: 'none' };
+  Object.assign(canvas.style, mediaStyle);
+  layer.append(canvas);
   place(source);
-  document.body.append(canvas);
+  document.body.append(layer);
   source.style.opacity = '0';
   if (liveVideo) {
-    // Keep the same decoder alive when React removes the old page. The video
-    // is a frame source only; it never participates in the browser snapshots.
-    Object.assign(liveVideo.style, { position: 'fixed', left: '0', top: '0', width: '1px', height: '1px', opacity: '0', pointerEvents: 'none' });
+    Object.assign(liveVideo.style, mediaStyle, { opacity: '0' });
     liveVideo.loop = true;
     liveVideo.setAttribute('aria-hidden', 'true');
-    document.body.append(liveVideo);
+    layer.append(liveVideo);
   }
   const remove = () => {
     if (removed) return;
     removed = true;
     if (videoFrame !== undefined) liveVideo.cancelVideoFrameCallback(videoFrame);
-    if (fallbackFrame !== undefined) cancelAnimationFrame(fallbackFrame);
+    if (paintFrame !== undefined) cancelAnimationFrame(paintFrame);
+    fade?.cancel();
+    stopWaiting?.();
+    bufferedMedia?.removeAttribute('data-preview-buffering');
+    observer?.disconnect();
     if (liveVideo) {
       liveVideo.loop = originalLoop;
       if (originalAriaHidden === null) liveVideo.removeAttribute('aria-hidden');
@@ -55,15 +56,12 @@ export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
       if (originalStyle === null) liveVideo.removeAttribute('style');
       else liveVideo.setAttribute('style', originalStyle);
       if (originalParent?.isConnected) originalParent.insertBefore(liveVideo, originalSibling?.parentNode === originalParent ? originalSibling : null);
-      else { liveVideo.pause(); liveVideo.remove(); }
+      else liveVideo.pause();
     }
-    if (paintFrame !== undefined) cancelAnimationFrame(paintFrame);
-    stopWaiting?.();
-    bufferedMedia?.removeAttribute('data-preview-buffering');
-    observer?.disconnect();
-    canvas.remove();
+    layer.remove();
   };
   return {
+    layer,
     stage(target, media) {
       bufferedMedia = media;
       media?.setAttribute('data-preview-buffering', 'true');
@@ -73,20 +71,18 @@ export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
       target.style.opacity = '0';
       place(target);
       if (liveVideo) {
-        // The outgoing React playback controller has now been disposed.
+        const reveal = () => { if (!removed) liveVideo.style.opacity = '1'; };
+        if (liveVideo.requestVideoFrameCallback) videoFrame = liveVideo.requestVideoFrameCallback(reveal);
+        else reveal();
         liveVideo.play()?.catch(() => {});
-        paintVideo();
       }
     },
     finish(media, time) {
       if (cancelled) return;
       source.style.opacity = sourceOpacity;
       if (!destination?.isConnected) { remove(); return; }
-      // Leave the cover in the real card after the native animation ends.
-      // A loading/seek timeout must never expose an unpainted video surface.
-      canvas.style.removeProperty('view-transition-name');
-      Object.assign(canvas.style, { position: 'absolute', inset: '0', left: '0', top: '0', width: '100%', height: '100%', zIndex: '1' });
-      destination.append(canvas);
+      Object.assign(layer.style, { position: 'absolute', inset: '0', left: '0', top: '0', width: '100%', height: '100%', zIndex: '1', transform: 'none' });
+      destination.append(layer);
       destination.style.opacity = destinationOpacity;
       if (typeof MutationObserver !== 'undefined') {
         observer = new MutationObserver(() => { if (!destination.isConnected) remove(); });
@@ -94,7 +90,12 @@ export function createSafariPreviewSnapshot(source, canvas, sourceMedia) {
       }
       paintFrame = requestAnimationFrame(() => {
         paintFrame = requestAnimationFrame(() => {
-          if (!cancelled) stopWaiting = coverUntilPresented(media, liveVideo ? () => liveVideo.currentTime : time, remove);
+          if (cancelled) return;
+          stopWaiting = coverUntilPresented(media, liveVideo ? () => liveVideo.currentTime : time, () => {
+            if (removed) return;
+            fade = layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: 'ease', fill: 'both' });
+            fade.finished.catch(() => {}).finally(remove);
+          });
         });
       });
     },

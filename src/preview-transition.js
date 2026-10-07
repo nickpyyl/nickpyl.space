@@ -1,4 +1,5 @@
-import { createSafariPreviewSnapshot, needsSafariPreviewSnapshot } from './safari-preview-snapshot.js';
+import { startSafariDesktopTransition } from './safari-desktop-transition.js';
+import { needsSafariPreviewSnapshot } from './safari-preview-snapshot.js';
 import { startMobilePreviewTransition } from './mobile-preview-transition.js';
 
 const homeScrollPositions = new Map();
@@ -7,6 +8,7 @@ const homeScrollPositions = new Map();
 export function startPreviewTransition(section, updatePage) {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return null;
   if (matchMedia("(max-width: 700px), (max-width: 960px) and (pointer: coarse)").matches) return startMobilePreviewTransition(section, updatePage);
+  if (needsSafariPreviewSnapshot()) return startSafariDesktopTransition(section, updatePage);
   if (!document.startViewTransition) return null;
   const selector = `[data-shared-preview="${section}"]`;
   const source = document.querySelector(selector);
@@ -20,24 +22,20 @@ export function startPreviewTransition(section, updatePage) {
   const poster = frame.poster;
   // Give the outgoing snapshot a painted frame even if unmounting the
   // video releases its compositor surface (most noticeable on return).
-  const safariSnapshot = frame.canvas && needsSafariPreviewSnapshot() ? createSafariPreviewSnapshot(source, frame.canvas, video) : null;
-  if (frame.canvas && !safariSnapshot) source.append(frame.canvas);
+  if (frame.canvas) source.append(frame.canvas);
   const sourceHome = source.closest(".home-page");
   const returningHome = !sourceHome;
   if (sourceHome) homeScrollPositions.set(section, sourceHome.scrollTop);
-  let destination, nextVideo;
+  let destination;
   let cancelled = false;
   let cleaned = false;
   const revealElements = [];
   let revealStyles;
-  if (!safariSnapshot) source.style.viewTransitionName = "section-preview";
+  source.style.viewTransitionName = "section-preview";
   const cleanup = () => {
     if (cleaned) return;
     cleaned = true;
-    if (safariSnapshot) {
-      if (cancelled) safariSnapshot.cancel();
-      else safariSnapshot.finish(nextVideo, () => time + (performance.now() - startedAt) / 1000);
-    } else frame.canvas?.remove();
+    frame.canvas?.remove();
     source.style.removeProperty("view-transition-name");
     destination?.style.removeProperty("view-transition-name");
     for (const element of revealElements) element.style.removeProperty("view-transition-name");
@@ -51,16 +49,13 @@ export function startPreviewTransition(section, updatePage) {
     if (!destination) return;
     const home = destination.closest(".home-page");
     if (home) home.scrollTop = homeScrollPositions.get(section) ?? 0;
-    nextVideo = destination.querySelector('video[data-active="true"], img[data-active="true"], video:not([data-active]), img:not([data-active])');
+    destination.style.viewTransitionName = "section-preview";
+    const nextVideo = destination.querySelector('video[data-active="true"], img[data-active="true"], video:not([data-active]), img:not([data-active])');
     if (!nextVideo) return;
-    if (safariSnapshot) safariSnapshot.stage(destination, nextVideo);
-    else destination.style.viewTransitionName = "section-preview";
     // Start movement immediately. Keep the captured frame visible while the
     // destination decodes, rather than freezing the whole old page to wait.
     if (poster && nextVideo.tagName !== "IMG") nextVideo.poster = poster;
-    if (safariSnapshot) {
-      document.documentElement.dataset.previewReady = "true";
-    } else prepareVideo(nextVideo, time, startedAt, () => cancelled).then(ready => {
+    prepareVideo(nextVideo, time, startedAt, () => cancelled).then(ready => {
       if (cancelled || cleaned || !ready) return;
       document.documentElement.dataset.previewReady = "true";
     }).catch(() => {});
@@ -94,7 +89,7 @@ export function startPreviewTransition(section, updatePage) {
   });
   transition.ready.catch(() => {});
   transition.finished.catch(() => {}).finally(cleanup);
-  return { finished: transition.finished, skipTransition() { cancelled = true; transition.skipTransition(); safariSnapshot?.cancel(); cleanup(); } };
+  return { finished: transition.finished, skipTransition() { cancelled = true; transition.skipTransition(); cleanup(); } };
 }
 
 function captureFrame(video) {

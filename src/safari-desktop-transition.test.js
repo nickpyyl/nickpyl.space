@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sharedPreviewFrames, startSafariDesktopTransition } from './safari-desktop-transition.js';
 
-function fixture(t, { pendingSnapshot = false } = {}) {
+function fixture(t, { pendingSnapshot = false, returningHome = false } = {}) {
   const animations = [];
   const bounds = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
   const node = (name, rect = bounds(20, 100, 200, 200)) => ({
@@ -22,13 +22,17 @@ function fixture(t, { pendingSnapshot = false } = {}) {
   const originalVideo = Object.assign(node('secondary-video'), { readyState: 4, videoWidth: 400, videoHeight: 400, closest: () => null });
   const copiedVideo = { replaceWith: element => { replacement = element; } };
   const copy = Object.assign(node('old-page'), { querySelectorAll: selector => pendingSnapshot && selector === 'video' ? [copiedVideo] : [], querySelector: () => oldCard });
-  const home = { scrollTop: 12, querySelectorAll: selector => pendingSnapshot && selector === 'video' ? [originalVideo] : [], cloneNode: () => copy };
-  const source = Object.assign(node('source'), { querySelector: () => media, closest: s => s === '.home-page' ? home : null });
+  let clones = 0;
+  const home = { scrollTop: 12, querySelectorAll: selector => pendingSnapshot && selector === 'video' ? [originalVideo] : [], cloneNode: () => { clones++; return copy; } };
+  const oldText = Object.assign(node('old-text'), { contains: () => false });
+  const oldGallery = Object.assign(node('old-gallery'), { contains: () => false });
+  const oldPage = { querySelectorAll: () => [oldText, oldGallery] };
+  const source = Object.assign(node('source'), { querySelector: () => media, closest: s => returningHome ? (s === '.selected-work-page' ? oldPage : null) : (s === '.home-page' ? home : null) });
   const text = Object.assign(node('text'), { contains: () => false, matches: () => true });
   const caption = Object.assign(node('caption'), { contains: () => false, matches: () => false });
   const gallery = Object.assign(node('gallery'), { contains: () => false, matches: () => false });
   const page = { querySelectorAll: () => [text, caption, gallery] };
-  const destination = Object.assign(node('destination', bounds(80, 250, 360, 270)), { querySelector: () => media, closest: s => s === '.home-page' ? null : page });
+  const destination = Object.assign(node('destination', bounds(80, 250, 360, 270)), { querySelector: () => media, closest: s => returningHome ? (s === '.home-page' ? page : null) : (s === '.home-page' ? null : page) });
   let current = source, updates = 0;
   const layer = node('shared-layer');
   const canvas = Object.assign(node('canvas'), { getContext: () => ({ drawImage() {} }), toDataURL: () => 'data:image/jpeg;base64,frame' });
@@ -43,7 +47,7 @@ function fixture(t, { pendingSnapshot = false } = {}) {
   }
   const transition = startSafariDesktopTransition('work', () => { updates++; current = destination; return true; });
   return { animations, transition, copy, layer, destination, source, image, replacement: () => replacement,
-    decode: () => resolveDecode(), failDecode: () => rejectDecode(Error('decode failed')), updates: () => updates };
+    decode: () => resolveDecode(), failDecode: () => rejectDecode(Error('decode failed')), updates: () => updates, clones: () => clones };
 }
 
 test('Safari moves only the shared card; captions fade in place without native snapshots', async t => {
@@ -56,11 +60,35 @@ test('Safari moves only the shared card; captions fade in place without native s
   const caption = f.animations.find(a => a.name === 'caption');
   assert.equal(caption.options.delay, 240);
   assert.ok(caption.frames.every(frame => !('transform' in frame) && !('left' in frame) && !('top' in frame)));
+  assert.ok(f.animations.filter(a => ['caption', 'gallery'].includes(a.name)).every(a => a.frames.every(frame => !('filter' in frame))));
   assert.equal(f.animations.find(a => a.name === 'old-page').options.duration, 90);
   f.transition.skipTransition();
   await f.transition.finished;
   assert.equal(f.layer.removed, true);
   assert.equal(f.copy.removed, true);
+});
+
+test('Safari outro fades real gallery content before unmounting, without copying the page', async t => {
+  const f = fixture(t, { returningHome: true });
+  await new Promise(setImmediate);
+  assert.equal(f.clones(), 0);
+  assert.equal(f.updates(), 0);
+  assert.equal(f.layer.mounted, undefined);
+  const exits = f.animations.filter(a => ['old-text', 'old-gallery'].includes(a.name));
+  assert.equal(exits.length, 2);
+  exits.forEach(a => { assert.equal(a.options.duration, 90); assert.deepEqual(a.frames, [{opacity:1},{opacity:0}]); a.complete(); });
+  await new Promise(setImmediate);
+  assert.equal(f.updates(), 1);
+  assert.equal(f.animations.find(a => a.name === 'shared-layer').options.duration, 350);
+  assert.equal(f.animations.find(a => a.name === 'caption').options.delay, 150);
+  f.transition.skipTransition(); await f.transition.finished;
+});
+
+test('interrupting the live gallery exit restores it without an obsolete page update', async t => {
+  const f = fixture(t, { returningHome: true });
+  f.transition.skipTransition(); await f.transition.finished;
+  assert.equal(f.updates(), 0); assert.equal(f.clones(), 0);
+  assert.ok(f.animations.every(a => a.cancelled));
 });
 
 test('compositor crops preserve the intended bounds and proportions for wide and tall clips', () => {

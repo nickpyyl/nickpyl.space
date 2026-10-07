@@ -163,7 +163,10 @@ export default function Home({ phase, onSelect, onIntent, previews, previewSourc
               <kbd className="home-destination-key" aria-hidden="true">E</kbd>
             </a>
             {createPortal(<span ref={tooltipRef} className={`home-destination-tooltip home-destination-tooltip--${hoveredDestination}${safariDesktop ? ' home-destination-tooltip--safari' : ''}`} data-phase={phase} aria-hidden="true">
-              <DestinationLabel destination={hoveredDestination} />
+              {safariDesktop ? <>
+                <span className="home-destination-tooltip-copy" data-destination="work"><DestinationLabel destination="work" /></span>
+                <span className="home-destination-tooltip-copy" data-destination="explorations"><DestinationLabel destination="explorations" /></span>
+              </> : <DestinationLabel destination={hoveredDestination} />}
             </span>, document.body)}
             <span className="home-object-instructions" id="home-object-controls">Click or press Enter to open. Press S for Selected work or E for Explorations.</span>
           </nav>

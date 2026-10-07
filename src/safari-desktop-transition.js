@@ -12,23 +12,40 @@ export function startSafariDesktopTransition(section, updatePage) {
   const from = source?.getBoundingClientRect();
   if (!media || !from || from.right <= 0 || from.left >= innerWidth || from.bottom <= 0 || from.top >= innerHeight) return null;
   if (media.tagName === 'IMG' ? !media.complete || !media.naturalWidth : media.readyState < 2) return null;
-  const canvas = capture(media);
-  if (!canvas) return null;
   const home = source.closest('.home-page');
+  const returningHome = !home;
   if (home) scrollPositions.set(section, home.scrollTop);
-  let outgoing = capturePage(source.closest('.selected-work-page') ?? home, selector);
+  // Keep the real gallery mounted for its short exit. Replacing its video
+  // surfaces with a page-sized snapshot is both expensive and flash-prone in
+  // WebKit, even when the replacement images have already decoded.
+  let outgoing = home ? capturePage(home, selector) : null;
+  const exits = [];
+  if (returningHome) {
+    const page = source.closest('.selected-work-page');
+    for (const element of page?.querySelectorAll('.work-intro, .work-piece:first-of-type figcaption, .work-piece:not(:first-of-type), .work-rail-end') ?? []) {
+      if (element.contains(source)) continue;
+      const bounds = element.getBoundingClientRect();
+      if (bounds.right <= 0 || bounds.left >= innerWidth || bounds.bottom <= 0 || bounds.top >= innerHeight) continue;
+      exits.push(element.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, easing: 'ease-out', fill: 'both' }));
+    }
+  }
   let shared;
   const animations = [];
   let cancelled = false;
   const cancel = () => {
     cancelled = true;
-    for (const animation of animations) animation.cancel();
+    for (const animation of [...exits, ...animations]) animation.cancel();
     outgoing?.remove();
     shared?.cancel();
   };
-  const finished = Promise.resolve(outgoing?.ready).then(async ready => {
+  const prepared = returningHome
+    ? Promise.all(exits.map(animation => animation.finished.catch(() => {}))).then(() => true)
+    : Promise.resolve(outgoing?.ready);
+  const finished = prepared.then(async ready => {
     if (cancelled) return;
     if (outgoing && !ready) { outgoing.remove(); outgoing = null; }
+    const canvas = capture(media);
+    if (!canvas) { cancel(); updatePage(); return; }
     outgoing?.mount();
     shared = createSafariPreviewSnapshot(source, canvas, media);
     if (!updatePage()) { cancel(); return; }
@@ -42,7 +59,7 @@ export function startSafariDesktopTransition(section, updatePage) {
     // Keep the decoder surface at its final size. Scale and crop on the
     // compositor instead of resizing a live Safari video on every frame.
     const motion = shared.layer.animate(sharedPreviewFrames(from, to, base),
-      { duration: 440, easing: 'cubic-bezier(.22,.8,.25,1)', fill: 'both' });
+      { duration: returningHome ? 350 : 440, easing: 'cubic-bezier(.22,.8,.25,1)', fill: 'both' });
     animations.push(motion);
     if (outgoing) {
       const exit = outgoing.element.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, easing: 'ease-out', fill: 'both' });
@@ -50,6 +67,9 @@ export function startSafariDesktopTransition(section, updatePage) {
       exit.finished.catch(() => {}).finally(() => outgoing.remove());
     }
     const page = destination.closest('.selected-work-page') ?? destinationHome;
+    // An opacity reveal avoids filtering several large decoded video surfaces
+    // every frame. These overrides belong only to the Safari-rendered page.
+    for (const piece of page?.querySelectorAll('.work-piece, .work-intro, .work-rail-end') ?? []) piece.style.filter = 'none';
     let galleryIndex = 0;
     for (const element of page?.querySelectorAll(destinationHome
       ? '.home-intro > :not(.home-destinations), .home-destination'
@@ -58,10 +78,8 @@ export function startSafariDesktopTransition(section, updatePage) {
       const bounds = element.getBoundingClientRect();
       if (bounds.right <= 0 || bounds.left >= innerWidth || bounds.bottom <= 0 || bounds.top >= innerHeight) continue;
       const text = element.matches('.work-intro, .home-intro > :not(.home-destinations)');
-      animations.push(element.animate(text
-        ? [{ opacity: 0 }, { opacity: 1 }]
-        : [{ opacity: 0, filter: 'blur(8px)' }, { opacity: .8, filter: 'blur(1.5px)', offset: .6 }, { opacity: 1, filter: 'blur(0px)' }],
-      { duration: text ? 380 : 320, delay: text ? 160 : 240 + Math.min(galleryIndex++, 4) * 45,
+      animations.push(element.animate([{ opacity: 0 }, { opacity: 1 }],
+      { duration: text ? 380 : 320, delay: (text ? 160 : 240 + Math.min(galleryIndex++, 4) * 45) - (returningHome ? 90 : 0),
         easing: text ? 'cubic-bezier(.25,.1,.25,1)' : 'cubic-bezier(.22,1,.36,1)', fill: 'both' }));
     }
     await motion.finished.catch(() => {});
@@ -69,7 +87,7 @@ export function startSafariDesktopTransition(section, updatePage) {
     motion.cancel();
     shared.finish(nextMedia, () => media.currentTime || 0);
     await Promise.all(animations.slice(1).map(animation => animation.finished.catch(() => {})));
-    for (const animation of animations) animation.cancel();
+    for (const animation of [...exits, ...animations]) animation.cancel();
   });
   finished.catch(cancel);
   return { finished, skipTransition: cancel };

@@ -42,12 +42,36 @@
    Crossing between cards keeps it open, with a brief color change. */
 .home-destination-tooltip { position:fixed; left:var(--label-x,50%); top:var(--label-y,0); font-size:var(--label-font-size,12px); opacity:0; clip-path:inset(0 calc(50% - 1px)); transform:translate(-50%,-50%); transition:clip-path 140ms cubic-bezier(.4,0,.2,1),opacity 80ms ease 40ms,background-color 90ms ease; }
 .home-destination-tooltip[data-pointer-active] { opacity:1; clip-path:inset(0 0); transition:clip-path 170ms cubic-bezier(.22,.7,.25,1),opacity 100ms ease,background-color 90ms ease; }
-.home-destination-tooltip--safari { left:0; top:0; transform:translate3d(var(--label-x,0px),var(--label-y,0px),0) translate(-50%,-50%); will-change:transform,clip-path; }
 @media (hover:hover) and (pointer:fine) {
   .home-destinations, .home-destinations * { cursor:none; }
 }
 .home-destination-tooltip[data-phase="leaving"] { animation:none; opacity:0; clip-path:inset(0 calc(50% - 1px)); transition:clip-path 140ms cubic-bezier(.4,0,.2,1),opacity 80ms ease 40ms; }
 .home-destination-tooltip--explorations { background:#32a5ff; }
+/* Safari keeps one stable cursor surface. Reveal only the background with a
+   transform; switching copies never resizes or collapses the label. */
+.home-destination-tooltip--safari,
+.home-destination-tooltip--safari[data-pointer-active],
+.home-destination-tooltip--safari[data-phase="leaving"] {
+  display:grid; left:0; top:0; padding:0; background:transparent;
+  opacity:1; clip-path:none; transition:none;
+  transform:translate3d(var(--label-x,0px),var(--label-y,0px),0) translate(-50%,-50%);
+  will-change:transform;
+}
+.home-destination-tooltip--safari::before {
+  content:""; position:absolute; inset:0; background:#ff3b3b;
+  opacity:0; transform:scaleX(.015); transform-origin:center;
+  transition:transform 150ms cubic-bezier(.4,0,.2,1),opacity 100ms ease,background-color 100ms ease;
+}
+.home-destination-tooltip--safari.home-destination-tooltip--explorations::before { background:#32a5ff; }
+.home-destination-tooltip--safari[data-pointer-active]::before {
+  opacity:1; transform:scaleX(1);
+  transition:transform 190ms cubic-bezier(.16,1,.3,1),opacity 100ms ease,background-color 100ms ease;
+}
+.home-destination-tooltip-copy { position:relative; grid-area:1 / 1; padding:3px 4px; text-align:center; opacity:0; transition:opacity 100ms ease; }
+.home-destination-tooltip--work[data-pointer-active] [data-destination="work"],
+.home-destination-tooltip--explorations[data-pointer-active] [data-destination="explorations"] { opacity:1; }
+.home-destination-tooltip--safari[data-phase="leaving"]::before { opacity:0; transform:scaleX(.015); }
+.home-destination-tooltip--safari[data-phase="leaving"] .home-destination-tooltip-copy { opacity:0; }
 .home-destination--explorations { --label-rest-y:68%; }
 .home-destination--explorations .home-destination-label { background:#32a5ff; }
 .home-destination:focus-visible .home-destination-label { opacity:1; }
@@ -77,6 +101,7 @@
   .home-destination-tooltip { display:none; }
 }
 @media (prefers-reduced-motion:reduce) {
+  .home-destination-tooltip--safari::before, .home-destination-tooltip-copy { transition:none; }
   .home-destination-tooltip[data-pointer-active], .home-destination-tooltip[data-phase="leaving"] { animation:none; clip-path:none; transition:none; }
   .home-preview-video { transition:none; }
   .home-page .home-column, .home-page .home-intro > * { animation:none; transition:none; filter:none; opacity:1; }

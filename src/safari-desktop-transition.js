@@ -16,18 +16,22 @@ export function startSafariDesktopTransition(section, updatePage) {
   if (!canvas) return null;
   const home = source.closest('.home-page');
   if (home) scrollPositions.set(section, home.scrollTop);
-  const outgoing = capturePage(source.closest('.selected-work-page') ?? home, selector);
-  const shared = createSafariPreviewSnapshot(source, canvas, media);
+  let outgoing = capturePage(source.closest('.selected-work-page') ?? home, selector);
+  let shared;
   const animations = [];
   let cancelled = false;
   const cancel = () => {
     cancelled = true;
     for (const animation of animations) animation.cancel();
     outgoing?.remove();
-    shared.cancel();
+    shared?.cancel();
   };
-  const finished = Promise.resolve().then(async () => {
-    if (cancelled || !updatePage()) { cancel(); return; }
+  const finished = Promise.resolve(outgoing?.ready).then(async ready => {
+    if (cancelled) return;
+    if (outgoing && !ready) { outgoing.remove(); outgoing = null; }
+    outgoing?.mount();
+    shared = createSafariPreviewSnapshot(source, canvas, media);
+    if (!updatePage()) { cancel(); return; }
     const destination = document.querySelector(selector);
     const nextMedia = destination?.querySelector(mediaSelector);
     if (!destination || !nextMedia) { cancel(); return; }
@@ -41,7 +45,7 @@ export function startSafariDesktopTransition(section, updatePage) {
       { duration: 440, easing: 'cubic-bezier(.22,.8,.25,1)', fill: 'both' });
     animations.push(motion);
     if (outgoing) {
-      const exit = outgoing.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, easing: 'ease-out', fill: 'both' });
+      const exit = outgoing.element.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, easing: 'ease-out', fill: 'both' });
       animations.push(exit);
       exit.finished.catch(() => {}).finally(() => outgoing.remove());
     }
@@ -103,6 +107,7 @@ function capture(media) {
 function capturePage(page, selector) {
   if (!page) return null;
   const copy = page.cloneNode(true);
+  const decodedFrames = [];
   copy.setAttribute('aria-hidden', 'true');
   copy.setAttribute('inert', '');
   copy.removeAttribute('id');
@@ -116,17 +121,31 @@ function capturePage(page, selector) {
       && original.readyState >= 2 && rect.right > 0 && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight;
     const frame = visible ? capture(original) : null;
     if (frame) {
-      frame.className = original.className;
-      frame.style.cssText = original.style.cssText;
-      if (original.dataset.active) frame.dataset.active = original.dataset.active;
-      video.replaceWith(frame);
+      // WebKit can expose a newly mounted canvas as blank for its first paint.
+      // Decode immutable images while the original page is still visible, then
+      // mount the fully prepared copy and swap pages in the same update.
+      const image = document.createElement('img');
+      image.className = original.className;
+      image.style.cssText = original.style.cssText;
+      if (original.dataset.active) image.dataset.active = original.dataset.active;
+      image.src = frame.toDataURL('image/jpeg', .9);
+      decodedFrames.push(image.decode());
+      video.replaceWith(image);
     } else video.remove();
   }
   copy.querySelector(selector)?.style.setProperty('visibility', 'hidden');
   Object.assign(copy.style, { position: 'fixed', inset: '0', zIndex: '100000', pointerEvents: 'none' });
-  document.body.append(copy);
-  copy.scrollTop = page.scrollTop;
+  const scrollTop = page.scrollTop;
   const originalRails = page.querySelectorAll('.work-rail');
-  for (const [index, rail] of [...copy.querySelectorAll('.work-rail')].entries()) rail.scrollLeft = originalRails[index].scrollLeft;
-  return copy;
+  const scrollLeft = [...originalRails].map(rail => rail.scrollLeft);
+  return {
+    element: copy,
+    ready: Promise.all(decodedFrames).then(() => true, () => false),
+    mount() {
+      document.body.append(copy);
+      copy.scrollTop = scrollTop;
+      for (const [index, rail] of [...copy.querySelectorAll('.work-rail')].entries()) rail.scrollLeft = scrollLeft[index];
+    },
+    remove: () => copy.remove(),
+  };
 }

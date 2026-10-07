@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sharedPreviewFrames, startSafariDesktopTransition } from './safari-desktop-transition.js';
 
-function fixture(t) {
+function fixture(t, { pendingSnapshot = false } = {}) {
   const animations = [];
   const bounds = (left, top, width, height) => ({ left, top, width, height, right: left + width, bottom: top + height });
   const node = (name, rect = bounds(20, 100, 200, 200)) => ({
@@ -17,8 +17,12 @@ function fixture(t) {
   });
   const media = { tagName: 'IMG', naturalWidth: 400, naturalHeight: 300, complete: true, setAttribute() {}, removeAttribute() {} };
   const oldCard = node('old-card');
-  const copy = Object.assign(node('old-page'), { querySelectorAll: () => [], querySelector: () => oldCard });
-  const home = { scrollTop: 12, querySelectorAll: () => [], cloneNode: () => copy };
+  let resolveDecode, rejectDecode, replacement;
+  const image = { style: {}, dataset: {}, decode: () => new Promise((resolve, reject) => { resolveDecode = resolve; rejectDecode = reject; }) };
+  const originalVideo = Object.assign(node('secondary-video'), { readyState: 4, videoWidth: 400, videoHeight: 400, closest: () => null });
+  const copiedVideo = { replaceWith: element => { replacement = element; } };
+  const copy = Object.assign(node('old-page'), { querySelectorAll: selector => pendingSnapshot && selector === 'video' ? [copiedVideo] : [], querySelector: () => oldCard });
+  const home = { scrollTop: 12, querySelectorAll: selector => pendingSnapshot && selector === 'video' ? [originalVideo] : [], cloneNode: () => copy };
   const source = Object.assign(node('source'), { querySelector: () => media, closest: s => s === '.home-page' ? home : null });
   const text = Object.assign(node('text'), { contains: () => false, matches: () => true });
   const caption = Object.assign(node('caption'), { contains: () => false, matches: () => false });
@@ -27,10 +31,10 @@ function fixture(t) {
   const destination = Object.assign(node('destination', bounds(80, 250, 360, 270)), { querySelector: () => media, closest: s => s === '.home-page' ? null : page });
   let current = source, updates = 0;
   const layer = node('shared-layer');
-  const canvas = Object.assign(node('canvas'), { getContext: () => ({ drawImage() {} }) });
+  const canvas = Object.assign(node('canvas'), { getContext: () => ({ drawImage() {} }), toDataURL: () => 'data:image/jpeg;base64,frame' });
   for (const [key, value] of Object.entries({ innerWidth: 1200, innerHeight: 900,
     requestAnimationFrame: () => 1, cancelAnimationFrame() {},
-    document: { body: { append() {} }, createElement: tag => tag === 'canvas' ? canvas : layer,
+    document: { body: { append(element) { element.mounted = true; } }, createElement: tag => tag === 'canvas' ? canvas : tag === 'img' ? image : layer,
       querySelector: () => current, startViewTransition() { throw Error('Safari must not use native snapshots'); } },
   })) {
     const previous = Object.getOwnPropertyDescriptor(globalThis, key);
@@ -38,12 +42,13 @@ function fixture(t) {
     t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key]);
   }
   const transition = startSafariDesktopTransition('work', () => { updates++; current = destination; return true; });
-  return { animations, transition, copy, layer, destination, updates: () => updates };
+  return { animations, transition, copy, layer, destination, source, image, replacement: () => replacement,
+    decode: () => resolveDecode(), failDecode: () => rejectDecode(Error('decode failed')), updates: () => updates };
 }
 
 test('Safari moves only the shared card; captions fade in place without native snapshots', async t => {
   const f = fixture(t);
-  await Promise.resolve();
+  await new Promise(setImmediate);
   const motion = f.animations.find(a => a.name === 'shared-layer');
   assert.equal(motion.options.duration, 440);
   assert.ok(motion.frames.every(frame => !('width' in frame) && !('height' in frame)));
@@ -83,6 +88,37 @@ test('cancelling Safari navigation before its update leaves no overlays or page 
   f.transition.skipTransition();
   await f.transition.finished;
   assert.equal(f.updates(), 0);
-  assert.equal(f.layer.removed, true);
+  assert.equal(f.layer.mounted, undefined);
   assert.equal(f.copy.removed, true);
+});
+
+test('right-hand video images decode before the outgoing page is exposed or the source is hidden', async t => {
+  const f = fixture(t, { pendingSnapshot: true });
+  await new Promise(setImmediate);
+  assert.equal(f.copy.mounted, undefined);
+  assert.equal(f.source.style.opacity, undefined);
+  assert.equal(f.updates(), 0);
+  assert.equal(f.replacement(), f.image);
+  f.decode(); await new Promise(setImmediate);
+  assert.equal(f.copy.mounted, true);
+  assert.equal(f.updates(), 1);
+  assert.equal(f.animations.find(a => a.name === 'old-page').frames[0].opacity, 1);
+  f.transition.skipTransition(); await f.transition.finished;
+});
+
+test('cancelling during frame preparation cannot mount a late snapshot or change the page', async t => {
+  const f = fixture(t, { pendingSnapshot: true });
+  f.transition.skipTransition(); f.decode(); await f.transition.finished;
+  assert.equal(f.copy.mounted, undefined);
+  assert.equal(f.layer.mounted, undefined);
+  assert.equal(f.updates(), 0);
+});
+
+test('a failed image decode is omitted rather than flashing an unpainted outgoing gallery', async t => {
+  const f = fixture(t, { pendingSnapshot: true });
+  f.failDecode(); await new Promise(setImmediate);
+  assert.equal(f.copy.mounted, undefined);
+  assert.equal(f.updates(), 1);
+  assert.equal(f.animations.some(a => a.name === 'old-page'), false);
+  f.transition.skipTransition(); await f.transition.finished;
 });

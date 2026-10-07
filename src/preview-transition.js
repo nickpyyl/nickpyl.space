@@ -20,7 +20,7 @@ export function startPreviewTransition(section, updatePage) {
   const poster = frame.poster;
   // Give the outgoing snapshot a painted frame even if unmounting the
   // video releases its compositor surface (most noticeable on return).
-  const safariSnapshot = frame.canvas && needsSafariPreviewSnapshot() ? createSafariPreviewSnapshot(source, frame.canvas) : null;
+  const safariSnapshot = frame.canvas && needsSafariPreviewSnapshot() ? createSafariPreviewSnapshot(source, frame.canvas, video) : null;
   if (frame.canvas && !safariSnapshot) source.append(frame.canvas);
   const sourceHome = source.closest(".home-page");
   const returningHome = !sourceHome;

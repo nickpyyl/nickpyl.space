@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSafariPreviewSnapshot, needsSafariPreviewSnapshot } from './safari-preview-snapshot.js';
 
-function fixture(t) {
+function fixture(t, live = false) {
   const callbacks = new Map();
   let id = 0;
-  const canvas = { style: { removeProperty(key) { if (key === 'view-transition-name') delete this.viewTransitionName; } }, setAttribute() {}, remove() { this.removed = true; } };
+  const drawn = [];
+  const canvas = { width: 640, height: 640, getContext: () => ({ drawImage(video) { drawn.push(video.currentTime); } }), style: { removeProperty(key) { if (key === 'view-transition-name') delete this.viewTransitionName; } }, setAttribute() {}, remove() { this.removed = true; } };
   const source = { style: { opacity: '.9' }, getBoundingClientRect: () => ({ left: 20, top: 40, width: 180, height: 180 }) };
   const target = { style: { opacity: '' }, isConnected: true, getBoundingClientRect: () => ({ left: 100, top: 120, width: 400, height: 400 }), append(node) { this.cover = node; } };
   const video = Object.assign(new EventTarget(), {
@@ -24,8 +25,14 @@ function fixture(t) {
     Object.defineProperty(globalThis, key, { value, configurable: true });
     t.after(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key]);
   }
+  const sourceVideo = Object.assign(new EventTarget(), {
+    tagName: 'VIDEO', style: {}, loop: false, readyState: 4, currentTime: 5,
+    parentNode: { isConnected: false }, getAttribute: () => null, setAttribute() {}, removeAttribute() {},
+    play() { this.playing = true; return Promise.resolve(); }, pause() { this.playing = false; }, remove() { this.removed = true; },
+    requestVideoFrameCallback(cb) { this.present = cb; return 1; }, cancelVideoFrameCallback() { this.present = undefined; },
+  });
   const paint = () => { const batch = [...callbacks.values()]; callbacks.clear(); batch.forEach(cb => cb()); };
-  return { canvas, source, target, video, paint, snapshot: createSafariPreviewSnapshot(source, canvas) };
+  return { canvas, source, target, video, sourceVideo, drawn, paint, snapshot: createSafariPreviewSnapshot(source, canvas, live ? sourceVideo : undefined) };
 }
 
 test('only Safari uses the bitmap snapshot workaround', () => {
@@ -89,4 +96,35 @@ test('a slow Safari decoder remains covered after the movement has finished', t 
   assert.equal(f.canvas.removed, undefined);
   f.video.present();
   assert.equal(f.canvas.removed, true);
+});
+
+
+test('Safari redraws the same playing video throughout movement instead of freezing a poster', t => {
+  const f = fixture(t, true);
+  f.snapshot.stage(f.target, f.video);
+  assert.equal(f.sourceVideo.playing, true);
+  assert.deepEqual(f.drawn, [5]);
+  f.sourceVideo.currentTime = 5.2;
+  f.sourceVideo.present();
+  f.sourceVideo.currentTime = 5.4;
+  f.sourceVideo.present();
+  assert.deepEqual(f.drawn, [5, 5.2, 5.4]);
+  f.snapshot.finish(f.video, 99);
+  f.paint(); f.paint();
+  assert.equal(f.video.currentTime, 5.4, 'handoff follows the actual playing decoder, not estimated elapsed time');
+  f.video.present();
+  assert.equal(f.sourceVideo.removed, true);
+  assert.equal(f.sourceVideo.playing, false);
+  assert.equal(f.sourceVideo.present, undefined);
+  assert.equal(f.sourceVideo.loop, false);
+});
+
+test('interrupting a live Safari canvas releases the borrowed decoder and frame callback', t => {
+  const f = fixture(t, true);
+  f.snapshot.stage(f.target, f.video);
+  f.snapshot.cancel();
+  assert.equal(f.sourceVideo.playing, false);
+  assert.equal(f.sourceVideo.present, undefined);
+  assert.equal(f.sourceVideo.removed, true);
+  assert.equal(f.video.dataset.previewBuffering, undefined);
 });

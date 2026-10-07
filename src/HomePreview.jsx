@@ -1,3 +1,4 @@
+import { needsSafariPreviewSnapshot } from './safari-preview-snapshot.js';
 import { useEffect, useRef } from "react";
 import { connectPreviewPlayback, nextPreview } from "./preview-playlist.js";
 
@@ -6,8 +7,8 @@ export default function HomePreview({ clips, activeSrc, section, canCycle, onAdv
   const playback = useRef(null);
   const cycleAllowed = useRef(canCycle);
   cycleAllowed.current = canCycle;
-  // Desktop retains its original controller lifecycle; mobile borrows the live video.
-  const desktopCycle = window.matchMedia("(max-width: 700px), (max-width: 960px) and (pointer: coarse)").matches ? null : canCycle;
+  // Borrowed videos keep their controller stable until the outgoing page unmounts.
+  const desktopCycle = window.matchMedia("(max-width: 700px), (max-width: 960px) and (pointer: coarse)").matches || needsSafariPreviewSnapshot() ? null : canCycle;
   const clip = clips.find(item => item.src === activeSrc) ?? clips[0];
   const next = nextPreview(clips, clip.src);
   const buffered = next.src === clip.src ? [clip] : [clip, next];

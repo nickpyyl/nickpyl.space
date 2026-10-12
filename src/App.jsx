@@ -443,7 +443,7 @@ function BioBlock() {
             <InteractiveLabel>Email me</InteractiveLabel>
           </a>
           <span> or find me on</span>{" "}
-          <a href="https://x.com/nickpylll" target="_blank" rel="noreferrer">
+          <a href="https://x.com/nickpyl" target="_blank" rel="noreferrer">
             <InteractiveLabel>X</InteractiveLabel>
           </a>
           <span>.</span>

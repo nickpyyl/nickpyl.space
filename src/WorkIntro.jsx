@@ -22,7 +22,7 @@ export default function WorkIntro({ selectedId, onSelect }) {
             </svg>
           </div>
           <h1 id="work-title">
-            <a href={isFuse ? "https://apps.apple.com/app/id6470302252" : "https://x.com/nickpylll"} target="_blank" rel="noreferrer">
+            <a href={isFuse ? "https://apps.apple.com/app/id6470302252" : "https://x.com/nickpyl"} target="_blank" rel="noreferrer">
               {title}
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 12 8-8M4 4h8v8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </a>

@@ -29,7 +29,7 @@ export function getPressedTransforms(items, selectedIndex, { left, top, maxWidth
   }));
 }
 
-export function createGalleryDock(rail, { reducedMotion = false, simple = false, onSelect = () => {} } = {}) {
+export function createGalleryDock(rail, { reducedMotion = false, simple = false, scroll, onSelect = () => {} } = {}) {
   const sequences = [...rail.querySelectorAll('.gallery-sequence')];
   const elements = sequences.flatMap(sequence => [...sequence.children]);
   const gallery = rail.closest('.portfolio-gallery');
@@ -116,9 +116,10 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
     const width = parseFloat(getComputedStyle(element).width);
     const baseLeft = element.getBoundingClientRect().left - transform.e + width * (transform.a - 1) / 2;
     const gutter = page.getBoundingClientRect().left + parseFloat(getComputedStyle(page.querySelector('.portfolio-top')).paddingLeft);
-    const previousScroll = rail.scrollLeft;
-    rail.scrollLeft += baseLeft - gutter;
-    const scrollDelta = rail.scrollLeft - previousScroll;
+    const previousScroll = scroll ? scroll.getPosition() : rail.scrollLeft;
+    if (scroll) scroll.setPosition(previousScroll + baseLeft - gutter);
+    else rail.scrollLeft += baseLeft - gutter;
+    const scrollDelta = (scroll ? scroll.getPosition() : rail.scrollLeft) - previousScroll;
 
     elements.forEach((item, index) => {
       const current = transforms[index];

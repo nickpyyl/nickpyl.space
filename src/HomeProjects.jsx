@@ -3,6 +3,7 @@ import { observeWorkVideo, refreshVideoPlayback } from "./work-video.js";
 import { getMediaSource } from "./media-preload.js";
 import { startGalleryDrift, wrapGalleryOffset } from "./gallery-motion.js";
 import { createGalleryDock } from "./gallery-dock.js";
+import { createMobileGalleryMotion } from "./mobile-gallery-motion.js";
 import "./home-projects.css";
 
 function GalleryMedia({ item, active, reducedMotion, duplicate, expanded, onToggle }) {
@@ -15,8 +16,6 @@ function GalleryMedia({ item, active, reducedMotion, duplicate, expanded, onTogg
     if (item.type !== "video") return;
     return observeWorkVideo(videoRef.current, item.src);
   }, [item.src, item.type]);
-
-  useEffect(() => { refreshVideoPlayback(); }, [active, reducedMotion]);
 
   return <figure className="gallery-piece" style={{ aspectRatio: item.aspectRatio || (item.width && item.height ? `${item.width} / ${item.height}` : "1 / 1") }}>
     {item.type === "image"
@@ -36,6 +35,8 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
   const railRef = useRef(null);
   const sequenceRef = useRef(null);
   const dock = useRef(null);
+  const mobileMotion = useRef(null);
+  const mobileProgress = useRef();
   const drag = useRef(null);
   const skipClick = useRef(false);
   const initialized = useRef(null);
@@ -43,15 +44,25 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
   const [selected, setSelected] = useState(null);
   const [visited, setVisited] = useState(active || prepared);
   useEffect(() => { if (active || prepared) setVisited(true); }, [active, prepared]);
+  useEffect(() => { refreshVideoPlayback(); }, [active, reducedMotion]);
 
   useLayoutEffect(() => {
     if (!active) return;
     const rail = railRef.current;
+    if (simple) {
+      rail.scrollLeft = 0;
+      const motion = createMobileGalleryMotion(rail, sequenceRef.current, { reducedMotion, progress: mobileProgress.current, onInteract: () => dock.current?.clear() });
+      mobileMotion.current = motion;
+      return () => {
+        mobileProgress.current = motion.getProgress();
+        motion.destroy();
+        mobileMotion.current = null;
+      };
+    }
     const layout = `${simple}-${reducedMotion}`;
     if (initialized.current !== layout) {
       const leadingSpace = parseFloat(getComputedStyle(rail.querySelector('.gallery-track')).paddingLeft);
-      const start = simple ? sequenceRef.current.offsetWidth : 0;
-      rail.scrollLeft = start + (reducedMotion ? 0 : sequenceRef.current.offsetHeight * .6 + leadingSpace);
+      rail.scrollLeft = reducedMotion ? 0 : sequenceRef.current.offsetHeight * .6 + leadingSpace;
       initialized.current = layout;
     }
     pause.current.focus = rail.closest('.portfolio-page').dataset.input === "keyboard" && rail.contains(document.activeElement);
@@ -59,9 +70,6 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
     if (reducedMotion) return;
     return startGalleryDrift(rail, {
       cycleWidth: () => sequenceRef.current.offsetWidth,
-      cycleStart: () => simple ? sequenceRef.current.offsetWidth : 0,
-      loopWhilePaused: simple,
-      onManualScroll: () => { if (simple) pause.current.until = performance.now() + 900; },
       isPaused: () => document.hidden || pause.current.focus || pause.current.pointer || pause.current.selected || performance.now() < pause.current.until,
       onWrap: ({ from, to }) => {
         const originals = sequenceRef.current.querySelectorAll("video");
@@ -76,33 +84,13 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
     });
   }, [active, reducedMotion, simple]);
 
-  useEffect(() => {
-    if (!active || !simple) return;
-    const rail = railRef.current;
-    function wheel() {
-      dock.current?.clear();
-      pause.current.until = performance.now() + 900;
-    }
-    function wrapReducedMotion() {
-      const width = sequenceRef.current.offsetWidth;
-      if (rail.scrollLeft < width || rail.scrollLeft >= width * 2) {
-        rail.scrollLeft = wrapGalleryOffset(rail.scrollLeft - width, width) + width;
-      }
-    }
-    rail.addEventListener("wheel", wheel, { passive: true });
-    if (reducedMotion) rail.addEventListener("scroll", wrapReducedMotion, { passive: true });
-    return () => {
-      rail.removeEventListener("wheel", wheel);
-      rail.removeEventListener("scroll", wrapReducedMotion);
-    };
-  }, [active, simple, reducedMotion]);
-
   useLayoutEffect(() => {
     setSelected(null);
     pause.current.selected = false;
     if (!active) return;
-    const controller = createGalleryDock(railRef.current, { reducedMotion, simple, onSelect: index => {
+    const controller = createGalleryDock(railRef.current, { reducedMotion, simple, scroll: mobileMotion.current, onSelect: index => {
       pause.current.selected = index !== null;
+      mobileMotion.current?.setPaused('selected', index !== null);
       setSelected(index);
     } });
     dock.current = controller;
@@ -137,13 +125,15 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
     if (event.target.tagName === "VIDEO" || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     dock.current?.clear();
+    mobileMotion.current?.setPaused('focus', true);
     const rail = railRef.current;
     const cards = [...sequenceRef.current.children];
     const cycle = sequenceRef.current.offsetWidth;
-    const position = wrapGalleryOffset(rail.scrollLeft, cycle);
+    const position = wrapGalleryOffset(mobileMotion.current?.getPosition() ?? rail.scrollLeft, cycle);
     const nearest = cards.reduce((best, card, index) => Math.abs(card.offsetLeft - position) < Math.abs(cards[best].offsetLeft - position) ? index : best, 0);
     const next = event.key === "Home" ? 0 : event.key === "End" ? cards.length - 1 : (nearest + (event.key === "ArrowRight" ? 1 : -1) + cards.length) % cards.length;
-    rail.scrollLeft = cards[next].offsetLeft + (simple ? cycle : 0);
+    if (mobileMotion.current) mobileMotion.current.setPosition(cards[next].offsetLeft + cycle);
+    else rail.scrollLeft = cards[next].offsetLeft;
   }
 
   function finishDrag(event) {
@@ -168,13 +158,19 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
         }}
         onFocusCapture={event => {
           pause.current.focus = event.currentTarget.closest('.portfolio-page').dataset.input === "keyboard";
+          mobileMotion.current?.setPaused('focus', pause.current.focus);
           const piece = event.target.closest(".gallery-piece");
           if (piece && pause.current.focus) {
-            event.currentTarget.scrollLeft = piece.offsetLeft + (simple ? sequenceRef.current.offsetWidth : 0);
+            if (mobileMotion.current) mobileMotion.current.setPosition(piece.offsetLeft + sequenceRef.current.offsetWidth);
+            else event.currentTarget.scrollLeft = piece.offsetLeft;
           }
         }}
-        onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) pause.current.focus = false; }}
+        onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) {
+          pause.current.focus = false;
+          mobileMotion.current?.setPaused('focus', false);
+        } }}
         onPointerDown={event => {
+          if (simple) return;
           skipClick.current = false;
           if (event.target.closest("a") || event.target.tagName === "VIDEO" && reducedMotion) return;
           if (event.button !== 0) return;

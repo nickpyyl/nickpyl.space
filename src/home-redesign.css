@@ -148,12 +148,17 @@ button { font: inherit; }
 @media (max-width: 700px) {
   .portfolio-page {
     --page-gutter: max(20px, env(safe-area-inset-left), env(safe-area-inset-right));
-    --media-height: clamp(144px, 46vw, 200px);
-    display: flex;
-    flex-direction: column;
-    min-height: 100svh;
+    --media-height: min(46vw, 26dvh, 200px);
+    position: fixed;
+    inset: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    height: 100dvh;
+    min-height: 0;
+    touch-action: pinch-zoom;
   }
-  .portfolio-top { flex: none; gap: 0; padding-block: max(10px, env(safe-area-inset-top)) 10px; }
+  .portfolio-page[data-view="about"] { display: grid; }
+  .portfolio-top { grid-row: 1; gap: 0; padding-block: max(10px, env(safe-area-inset-top)) 10px; }
   .portfolio-navigation { width: 100%; justify-content: space-between; gap: 12px; }
   .portfolio-identity img { width: 20px; height: 20px; }
   .portfolio-identity a, .portfolio-tabs button { min-height: 44px; }
@@ -161,20 +166,34 @@ button { font: inherit; }
   .portfolio-tabs button { min-width: 44px; text-align: center; }
   .portfolio-tabs button:disabled, .portfolio-contact-top, .portfolio-clock { display: none; }
   .portfolio-work {
+    grid-row: 2;
     top: auto;
-    margin-top: max(112px, calc(61.3svh - var(--media-height) - 64px));
-    margin-bottom: 80px;
+    margin: 0;
+    min-height: 0;
+    display: flex;
+    align-items: center;
   }
   .portfolio-work[data-active="true"] { position: relative; }
-  .portfolio-bottom {
+  .portfolio-galleries { width: 100%; transform: translateY(clamp(0px, calc((100dvh - 650px) * .25), 48px)); }
+  .portfolio-about {
+    grid-row: 2;
+    align-self: center;
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    height: min(calc(100% - 32px), calc(100vw - var(--page-gutter) * 2 + 8px));
+    min-height: 0;
+    margin-block: 0;
+  }
+  .portfolio-about img { height: 100%; min-height: 0; }
+  .portfolio-bottom, .portfolio-page[data-view="about"] .portfolio-bottom {
+    grid-row: 3;
     position: relative;
-    margin-top: auto;
+    margin: 0;
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
     line-height: 24px;
-    padding-top: 32px;
-    padding-bottom: max(32px, env(safe-area-inset-bottom));
+    padding-top: 20px;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
   .portfolio-contact-bottom { display: block; }
 }

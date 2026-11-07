@@ -16,7 +16,7 @@ export default function AboutPhotos({ active, prepared }) {
   return <section className="portfolio-about" id="gallery-about" role="tabpanel" aria-labelledby="tab-about"
     data-active={active} inert={!active} aria-hidden={!active} tabIndex={active ? 0 : -1}>
     {(active || prepared || visited) && photos.map(photo => <img key={photo.id} {...aboutPhotoAssets[photo.id]} alt={photo.alt}
-      sizes="(max-width: 900px) calc((100vw - 56px) / 2), calc((100vw - clamp(48px, 4.44vw, 96px) - 32px) / 5)"
+      sizes="(max-width: 700px) calc((100vw - 56px) / 2), (max-width: 900px) calc((100vw - 72px) / 2), calc((100vw - 96px) / 5)"
       decoding="async" draggable="false" />)}
   </section>;
 }

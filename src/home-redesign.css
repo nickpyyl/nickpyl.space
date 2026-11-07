@@ -17,7 +17,7 @@ html { -webkit-text-size-adjust: 100%; }
 button, a { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 button { font: inherit; }
 .portfolio-page {
-  --page-gutter: clamp(24px, 2.22vw, 48px);
+  --page-gutter: 32px;
   --media-height: clamp(160px, 12.5vw, 256px);
   min-height: 100svh;
   position: relative;

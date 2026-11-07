@@ -69,17 +69,23 @@ test('reduced motion keeps the line still while manual browsing remains availabl
 
 function controls(t) {
   const listeners = new Map();
+  const pageListeners = new Map();
   const captures = new Set();
   const page = {
+    addEventListener(type, handler) { pageListeners.set(type, handler); },
+    removeEventListener(type) { pageListeners.delete(type); },
+  };
+  const { track } = fakeTrack();
+  const gallery = { dataset: {} };
+  const rail = {
+    clientWidth: 393, querySelector: () => track,
+    closest: selector => selector === '.portfolio-page' ? page : selector === '.portfolio-gallery' ? gallery : null,
     addEventListener(type, handler) { listeners.set(type, handler); },
     removeEventListener(type) { listeners.delete(type); },
     setPointerCapture(id) { captures.add(id); },
     hasPointerCapture(id) { return captures.has(id); },
     releasePointerCapture(id) { captures.delete(id); },
   };
-  const { track } = fakeTrack();
-  const gallery = { dataset: {} };
-  const rail = { clientWidth: 393, querySelector: () => track, closest: selector => selector === '.portfolio-page' ? page : gallery };
   const sequence = { offsetHeight: 180, getBoundingClientRect: () => ({ width: 1000 }) };
   const globals = {
     document: { hidden: false, addEventListener() {}, removeEventListener() {} },
@@ -100,12 +106,12 @@ function controls(t) {
     restore.forEach(reset => reset());
   });
   const pointer = (type, x, y, time, id = 1) => listeners.get(type)({
-    type, pointerId: id, clientX: x, clientY: y, timeStamp: time, button: 0, target: { closest: () => null },
+    type, pointerId: id, clientX: x, clientY: y, timeStamp: time, button: 0, target: rail,
   });
-  return { motion, listeners, gallery, pointer, interactions: () => interactions };
+  return { motion, listeners, pageListeners, captures, gallery, pointer, interactions: () => interactions };
 }
 
-test('vertical and horizontal page gestures both move the gallery and suppress accidental taps', t => {
+test('vertical and horizontal gallery gestures move the line and suppress accidental taps', t => {
   const { motion, listeners, pointer, interactions } = controls(t);
   pointer('pointerdown', 200, 500, 0);
   pointer('pointermove', 200, 400, 100);
@@ -121,8 +127,8 @@ test('vertical and horizontal page gestures both move the gallery and suppress a
   assert.equal(prevented, true);
 });
 
-test('downward wheel input moves horizontally while pinch gestures remain untouched', t => {
-  const { motion, listeners, pointer, gallery } = controls(t);
+test('downward wheel input moves horizontally while pinch gestures release capture', t => {
+  const { motion, listeners, pointer, gallery, captures } = controls(t);
   let prevented = false;
   listeners.get('wheel')({ deltaX: 0, deltaY: 120, deltaMode: 0, preventDefault() { prevented = true; } });
   assert.equal(motion.getPosition(), 1120);
@@ -135,4 +141,40 @@ test('downward wheel input moves horizontally while pinch gestures remain untouc
   pointer('pointermove', 100, 400, 120);
   assert.equal(motion.getPosition(), beforePinch);
   assert.equal(gallery.dataset.dragging, undefined);
+  assert.equal(captures.size, 0);
+});
+
+test('gestures outside the gallery stay with the browser and never capture the page', t => {
+  const { motion, pageListeners, interactions } = controls(t);
+  for (const type of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'click']) {
+    assert.equal(pageListeners.has(type), false, `${type} must not be intercepted on the page`);
+  }
+  assert.equal(motion.getPosition(), 1000);
+  assert.equal(interactions(), 0);
+});
+
+test('browser cancellation and lost capture stop a drag without retaining the pointer', t => {
+  const { motion, pointer, gallery, captures } = controls(t);
+  for (const ending of ['pointercancel', 'lostpointercapture']) {
+    pointer('pointerdown', 200, 400, 0);
+    pointer('pointermove', 150, 400, 100);
+    assert.equal(captures.size, 1);
+    pointer(ending, 150, 400, 110);
+    const position = motion.getPosition();
+    pointer('pointermove', 100, 400, 120);
+    assert.equal(motion.getPosition(), position);
+    assert.equal(captures.size, 0);
+    assert.equal(gallery.dataset.dragging, undefined);
+  }
+});
+
+test('transferring implicit touch capture from a card to the rail does not cancel the drag', t => {
+  const { motion, pointer, listeners, captures } = controls(t);
+  pointer('pointerdown', 200, 400, 0);
+  pointer('pointermove', 150, 400, 100);
+  listeners.get('lostpointercapture')({ type: 'lostpointercapture', pointerId: 1, target: {} });
+  pointer('pointermove', 100, 400, 120);
+  assert.equal(motion.getPosition(), 1100);
+  assert.equal(captures.size, 1);
+  pointer('pointerup', 100, 400, 130);
 });

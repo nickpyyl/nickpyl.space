@@ -8,7 +8,6 @@ import "./home-projects.css";
 
 function GalleryMedia({ item, active, reducedMotion, duplicate, expanded, onToggle }) {
   const videoRef = useRef(null);
-  const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const label = item.description || item.alt;
   const aspectRatio = item.aspectRatio || (item.width && item.height ? `${item.width} / ${item.height}` : "1 / 1");
@@ -21,11 +20,10 @@ function GalleryMedia({ item, active, reducedMotion, duplicate, expanded, onTogg
   // Explicit widths keep WebKit's max-content rows independent of video metadata.
   return <figure className="gallery-piece" style={{ width: `calc(var(--media-height) * (${aspectRatio}))` }}>
     {item.type === "image"
-      ? <img src={getMediaSource(item.src)} srcSet={item.srcSet} sizes="(max-width: 700px) 300px, 525px" alt={item.alt} width={item.width} height={item.height} loading="lazy" decoding="async" draggable="false" onLoad={() => setReady(true)} onError={() => setFailed(true)} />
+      ? <img src={getMediaSource(item.src)} srcSet={item.srcSet} sizes="(max-width: 700px) 300px, 525px" alt={item.alt} width={item.width} height={item.height} loading="lazy" decoding="async" draggable="false" onError={() => setFailed(true)} />
       : <video ref={videoRef} aria-label={label} muted loop playsInline preload="none" controls={reducedMotion}
           tabIndex={duplicate ? -1 : undefined} data-preview-buffering={!active || reducedMotion ? "true" : undefined}
-          onLoadedData={() => setReady(true)} onError={() => setFailed(true)} />}
-    {!ready && !failed && <span className="gallery-media-status" role="status">Loading preview…</span>}
+          onError={() => setFailed(true)} />}
     {failed && <a className="gallery-media-status" href={item.src} target="_blank" rel="noreferrer" tabIndex={duplicate ? -1 : undefined}>Open media</a>}
     <button className="gallery-open" type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${label}`}
       aria-expanded={expanded} tabIndex={duplicate ? -1 : 0} onClick={event => onToggle(event.currentTarget.closest(".gallery-piece"))} />

@@ -50,7 +50,6 @@ export function createLoopingTrack(track, { width, initialOffset = 0, reducedMot
 
 export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progress, onInteract }) {
   const track = rail.querySelector('.gallery-track');
-  const page = rail.closest('.portfolio-page');
   const gallery = rail.closest('.portfolio-gallery');
   let width = sequence.getBoundingClientRect().width;
   const loop = createLoopingTrack(track, {
@@ -86,6 +85,7 @@ export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progr
 
   function pointerdown(event) {
     if (gesture && gesture.id !== event.pointerId) {
+      if (rail.hasPointerCapture(gesture.id)) rail.releasePointerCapture(gesture.id);
       gesture = undefined;
       delete gallery.dataset.dragging;
       skipClick = true;
@@ -109,7 +109,7 @@ export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progr
       gesture.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
       gallery.dataset.dragging = 'true';
       onInteract();
-      page.setPointerCapture(event.pointerId);
+      rail.setPointerCapture(event.pointerId);
     }
     const delta = gesture.axis === 'x' ? dx : dy;
     const elapsed = Math.max(8, event.timeStamp - gesture.time);
@@ -121,14 +121,15 @@ export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progr
   }
 
   function finish(event) {
+    if (event.type === 'lostpointercapture' && event.target !== rail) return;
     if (!gesture || gesture.id !== event.pointerId) return;
     const moved = Boolean(gesture.axis);
     let velocity = event.timeStamp - gesture.time < 100 ? gesture.velocity : 0;
     gesture = undefined;
     skipClick = moved;
     delete gallery.dataset.dragging;
-    if (page.hasPointerCapture(event.pointerId)) page.releasePointerCapture(event.pointerId);
-    if (moved && !reducedMotion && event.type !== 'pointercancel' && Math.abs(velocity) > .02) {
+    if (rail.hasPointerCapture(event.pointerId)) rail.releasePointerCapture(event.pointerId);
+    if (moved && !reducedMotion && event.type === 'pointerup' && Math.abs(velocity) > .02) {
       paused.add('momentum');
       let previous;
       function coast(time) {
@@ -182,24 +183,26 @@ export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progr
     sync();
   });
   resize.observe(sequence);
-  page.addEventListener('pointerdown', pointerdown);
-  page.addEventListener('pointermove', pointermove);
-  page.addEventListener('pointerup', finish);
-  page.addEventListener('pointercancel', finish);
-  page.addEventListener('wheel', wheel, { passive: false });
-  page.addEventListener('click', click, true);
+  rail.addEventListener('pointerdown', pointerdown);
+  rail.addEventListener('pointermove', pointermove);
+  rail.addEventListener('pointerup', finish);
+  rail.addEventListener('pointercancel', finish);
+  rail.addEventListener('lostpointercapture', finish);
+  rail.addEventListener('wheel', wheel, { passive: false });
+  rail.addEventListener('click', click, true);
   document.addEventListener('visibilitychange', visibility);
   sync();
 
   return { getPosition: loop.getPosition, getProgress: () => loop.getPosition() / width, setPosition: loop.setPosition, setPaused, destroy() {
     stopMomentum();
     resize.disconnect();
-    page.removeEventListener('pointerdown', pointerdown);
-    page.removeEventListener('pointermove', pointermove);
-    page.removeEventListener('pointerup', finish);
-    page.removeEventListener('pointercancel', finish);
-    page.removeEventListener('wheel', wheel);
-    page.removeEventListener('click', click, true);
+    rail.removeEventListener('pointerdown', pointerdown);
+    rail.removeEventListener('pointermove', pointermove);
+    rail.removeEventListener('pointerup', finish);
+    rail.removeEventListener('pointercancel', finish);
+    rail.removeEventListener('lostpointercapture', finish);
+    rail.removeEventListener('wheel', wheel);
+    rail.removeEventListener('click', click, true);
     document.removeEventListener('visibilitychange', visibility);
     delete gallery.dataset.dragging;
     loop.destroy();

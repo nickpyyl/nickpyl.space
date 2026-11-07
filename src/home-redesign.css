@@ -155,7 +155,6 @@ button { font: inherit; }
     grid-template-rows: auto minmax(0, 1fr) auto;
     height: 100dvh;
     min-height: 0;
-    touch-action: pinch-zoom;
   }
   .portfolio-page[data-view="about"] { display: grid; }
   .portfolio-top { grid-row: 1; gap: 0; padding-block: max(10px, env(safe-area-inset-top)) 10px; }

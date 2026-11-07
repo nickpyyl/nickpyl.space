@@ -25,7 +25,12 @@ a.gallery-media-status { z-index: 1; pointer-events: auto; text-decoration: unde
 .gallery-edge span:nth-child(3) { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); mask-image: linear-gradient(to right, transparent 35%, oklch(0 0 0) 90%); }
 .portfolio-page[data-input="keyboard"] :is(.gallery-piece, .gallery-caption) { transition: none; }
 .portfolio-gallery[data-simple="true"] .gallery-viewport { height: calc(var(--media-height) * 1.8); top: calc(var(--media-height) * -.6); }
-.portfolio-gallery[data-simple="true"] .gallery-rail { overflow: clip; padding-top: calc(var(--media-height) * .6); padding-bottom: calc(var(--media-height) * .2); touch-action: pinch-zoom; }
+.portfolio-gallery[data-simple="true"] .gallery-rail { overflow: clip; padding-top: calc(var(--media-height) * .6); padding-bottom: calc(var(--media-height) * .2); overscroll-behavior-inline: auto; touch-action: pinch-zoom; }
+/* Edge hits bypass the rail so Safari keeps its back/forward gestures. */
+.portfolio-gallery[data-simple="true"] .gallery-viewport::before,
+.portfolio-gallery[data-simple="true"] .gallery-viewport::after { content: ""; position: absolute; inset-block: 0; z-index: 3; pointer-events: auto; touch-action: auto; }
+.portfolio-gallery[data-simple="true"] .gallery-viewport::before { left: 0; width: max(32px, env(safe-area-inset-left)); }
+.portfolio-gallery[data-simple="true"] .gallery-viewport::after { right: 0; width: max(32px, env(safe-area-inset-right)); }
 .portfolio-gallery[data-simple="true"] .gallery-track { padding-right: var(--page-gutter); will-change: transform; }
 .portfolio-gallery[data-dragging="true"] .gallery-piece { transition: none; }
 .portfolio-gallery[data-simple="true"] .gallery-edge { display: none; }

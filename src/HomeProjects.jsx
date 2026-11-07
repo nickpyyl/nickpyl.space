@@ -11,13 +11,15 @@ function GalleryMedia({ item, active, reducedMotion, duplicate, expanded, onTogg
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const label = item.description || item.alt;
+  const aspectRatio = item.aspectRatio || (item.width && item.height ? `${item.width} / ${item.height}` : "1 / 1");
 
   useEffect(() => {
     if (item.type !== "video") return;
     return observeWorkVideo(videoRef.current, item.src);
   }, [item.src, item.type]);
 
-  return <figure className="gallery-piece" style={{ aspectRatio: item.aspectRatio || (item.width && item.height ? `${item.width} / ${item.height}` : "1 / 1") }}>
+  // Explicit widths keep WebKit's max-content rows independent of video metadata.
+  return <figure className="gallery-piece" style={{ width: `calc(var(--media-height) * (${aspectRatio}))` }}>
     {item.type === "image"
       ? <img src={getMediaSource(item.src)} srcSet={item.srcSet} sizes="(max-width: 700px) 300px, 525px" alt={item.alt} width={item.width} height={item.height} loading="lazy" decoding="async" draggable="false" onLoad={() => setReady(true)} onError={() => setFailed(true)} />
       : <video ref={videoRef} aria-label={label} muted loop playsInline preload="none" controls={reducedMotion}

@@ -69,3 +69,21 @@ test('pressed media fits a narrow screen and stays below the header', () => {
   const short = getPressedTransforms(row, 0, { left: 24, top: 350, maxWidth: 1000 })[0];
   assert.ok(Math.abs(row[0].y + short.y - row[0].height * short.scale / 2 - 350) < .00001);
 });
+
+test('mobile expansion leaves room for a neighboring card without changing the baseline', () => {
+  const row = [
+    { left: -168, width: 180, height: 180, y: 432 },
+    { left: 20, width: 180, height: 180, y: 432 },
+    { left: 208, width: 305, height: 180, y: 432 },
+  ];
+  const result = getPressedTransforms(row, 1, { left: 20, top: 96, maxWidth: 353, maxScale: 1.6 });
+  const selected = row[1];
+  const pose = result[1];
+  const right = selected.left + pose.x + selected.width * (1 + pose.scale) / 2;
+  const neighborLeft = row[2].left + result[2].x;
+  assert.equal(pose.scale, 1.6);
+  assert.ok(Math.abs(selected.left + pose.x - selected.width * (pose.scale - 1) / 2 - 20) < .00001);
+  assert.equal(selected.y + pose.y + selected.height * pose.scale / 2, 522);
+  assert.equal(neighborLeft - right, 8);
+  assert.ok(neighborLeft < 393);
+});

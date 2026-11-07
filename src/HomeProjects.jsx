@@ -5,7 +5,7 @@ import { startGalleryDrift, wrapGalleryOffset } from "./gallery-motion.js";
 import { createGalleryDock } from "./gallery-dock.js";
 import "./home-projects.css";
 
-function GalleryMedia({ item, active, reducedMotion, duplicate, expanded, onToggle, simple }) {
+function GalleryMedia({ item, active, reducedMotion, duplicate, expanded, onToggle }) {
   const videoRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -26,8 +26,8 @@ function GalleryMedia({ item, active, reducedMotion, duplicate, expanded, onTogg
           onLoadedData={() => setReady(true)} onError={() => setFailed(true)} />}
     {!ready && !failed && <span className="gallery-media-status" role="status">Loading preview…</span>}
     {failed && <a className="gallery-media-status" href={item.src} target="_blank" rel="noreferrer" tabIndex={duplicate ? -1 : undefined}>Open media</a>}
-    {!simple && <button className="gallery-open" type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${label}`}
-      aria-expanded={expanded} tabIndex={duplicate ? -1 : 0} onClick={event => onToggle(event.currentTarget.closest(".gallery-piece"))} />}
+    <button className="gallery-open" type="button" aria-label={`${expanded ? "Collapse" : "Expand"} ${label}`}
+      aria-expanded={expanded} tabIndex={duplicate ? -1 : 0} onClick={event => onToggle(event.currentTarget.closest(".gallery-piece"))} />
     <figcaption className="visually-hidden">{label}</figcaption>
   </figure>;
 }
@@ -38,7 +38,7 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
   const dock = useRef(null);
   const drag = useRef(null);
   const skipClick = useRef(false);
-  const initialized = useRef(false);
+  const initialized = useRef(null);
   const pause = useRef({ focus: false, pointer: false, selected: false, until: 0 });
   const [selected, setSelected] = useState(null);
   const [visited, setVisited] = useState(active || prepared);
@@ -47,20 +47,27 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
   useLayoutEffect(() => {
     if (!active) return;
     const rail = railRef.current;
-    if (!initialized.current) {
+    const layout = `${simple}-${reducedMotion}`;
+    if (initialized.current !== layout) {
       const leadingSpace = parseFloat(getComputedStyle(rail.querySelector('.gallery-track')).paddingLeft);
-      rail.scrollLeft = reducedMotion || simple ? 0 : sequenceRef.current.offsetHeight * .6 + leadingSpace;
-      initialized.current = true;
+      const start = simple ? sequenceRef.current.offsetWidth : 0;
+      rail.scrollLeft = start + (reducedMotion ? 0 : sequenceRef.current.offsetHeight * .6 + leadingSpace);
+      initialized.current = layout;
     }
-    pause.current.focus = rail.contains(document.activeElement);
+    pause.current.focus = rail.closest('.portfolio-page').dataset.input === "keyboard" && rail.contains(document.activeElement);
     pause.current.pointer = false;
-    if (reducedMotion || simple) return;
+    if (reducedMotion) return;
     return startGalleryDrift(rail, {
       cycleWidth: () => sequenceRef.current.offsetWidth,
+      cycleStart: () => simple ? sequenceRef.current.offsetWidth : 0,
+      loopWhilePaused: simple,
+      onManualScroll: () => { if (simple) pause.current.until = performance.now() + 900; },
       isPaused: () => document.hidden || pause.current.focus || pause.current.pointer || pause.current.selected || performance.now() < pause.current.until,
-      onWrap: () => {
+      onWrap: ({ from, to }) => {
         const originals = sequenceRef.current.querySelectorAll("video");
-        const copies = sequenceRef.current.nextElementSibling.querySelectorAll("video");
+        const source = to < from ? sequenceRef.current.nextElementSibling : sequenceRef.current.previousElementSibling;
+        if (!source) return;
+        const copies = source.querySelectorAll("video");
         originals.forEach((video, index) => {
           const copy = copies[index];
           if (!copy.paused && copy.readyState >= 2 && video.readyState >= 1) video.currentTime = copy.currentTime;
@@ -69,11 +76,32 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
     });
   }, [active, reducedMotion, simple]);
 
+  useEffect(() => {
+    if (!active || !simple) return;
+    const rail = railRef.current;
+    function wheel() {
+      dock.current?.clear();
+      pause.current.until = performance.now() + 900;
+    }
+    function wrapReducedMotion() {
+      const width = sequenceRef.current.offsetWidth;
+      if (rail.scrollLeft < width || rail.scrollLeft >= width * 2) {
+        rail.scrollLeft = wrapGalleryOffset(rail.scrollLeft - width, width) + width;
+      }
+    }
+    rail.addEventListener("wheel", wheel, { passive: true });
+    if (reducedMotion) rail.addEventListener("scroll", wrapReducedMotion, { passive: true });
+    return () => {
+      rail.removeEventListener("wheel", wheel);
+      rail.removeEventListener("scroll", wrapReducedMotion);
+    };
+  }, [active, simple, reducedMotion]);
+
   useLayoutEffect(() => {
     setSelected(null);
     pause.current.selected = false;
-    if (!active || simple) return;
-    const controller = createGalleryDock(railRef.current, { reducedMotion, onSelect: index => {
+    if (!active) return;
+    const controller = createGalleryDock(railRef.current, { reducedMotion, simple, onSelect: index => {
       pause.current.selected = index !== null;
       setSelected(index);
     } });
@@ -115,7 +143,7 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
     const position = wrapGalleryOffset(rail.scrollLeft, cycle);
     const nearest = cards.reduce((best, card, index) => Math.abs(card.offsetLeft - position) < Math.abs(cards[best].offsetLeft - position) ? index : best, 0);
     const next = event.key === "Home" ? 0 : event.key === "End" ? cards.length - 1 : (nearest + (event.key === "ArrowRight" ? 1 : -1) + cards.length) % cards.length;
-    rail.scrollLeft = cards[next].offsetLeft;
+    rail.scrollLeft = cards[next].offsetLeft + (simple ? cycle : 0);
   }
 
   function finishDrag(event) {
@@ -139,18 +167,20 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
           skipClick.current = false;
         }}
         onFocusCapture={event => {
-          pause.current.focus = true;
+          pause.current.focus = event.currentTarget.closest('.portfolio-page').dataset.input === "keyboard";
           const piece = event.target.closest(".gallery-piece");
-          if (piece) event.currentTarget.scrollLeft = piece.offsetLeft;
+          if (piece && pause.current.focus) {
+            event.currentTarget.scrollLeft = piece.offsetLeft + (simple ? sequenceRef.current.offsetWidth : 0);
+          }
         }}
         onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) pause.current.focus = false; }}
         onPointerDown={event => {
-          if (simple) return;
           skipClick.current = false;
           if (event.target.closest("a") || event.target.tagName === "VIDEO" && reducedMotion) return;
           if (event.button !== 0) return;
+          pause.current.focus = false;
           pause.current.pointer = true;
-          if (event.pointerType === "mouse") event.preventDefault();
+          if (!simple && event.pointerType === "mouse") event.preventDefault();
           drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, start: event.currentTarget.scrollLeft, moved: false };
         }}
         onPointerMove={event => {
@@ -162,15 +192,18 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
             gesture.start = event.currentTarget.scrollLeft;
           }
           gesture.moved = true;
-          if (event.pointerType !== "mouse") return;
+          if (simple || event.pointerType !== "mouse") return;
           event.currentTarget.setPointerCapture(event.pointerId);
           event.currentTarget.scrollLeft = wrapGalleryOffset(gesture.start + gesture.x - event.clientX, sequenceRef.current.offsetWidth);
         }}
-        onPointerUp={finishDrag} onPointerCancel={finishDrag} onLostPointerCapture={finishDrag}>
+        onPointerUp={finishDrag} onPointerCancel={event => {
+          if (simple) dock.current?.clear();
+          finishDrag(event);
+        }} onLostPointerCapture={finishDrag}>
         <div className="gallery-track">
-          {(simple ? [false] : [false, true]).map(duplicate => <div key={String(duplicate)} ref={duplicate ? undefined : sequenceRef} className="gallery-sequence" aria-hidden={duplicate || undefined}>
-            {(active || prepared || visited) && items.map((item, index) => <GalleryMedia key={item.src} item={item} active={active} reducedMotion={reducedMotion} duplicate={duplicate}
-              simple={simple} expanded={selected === index + (duplicate ? items.length : 0)} onToggle={element => dock.current?.toggle(element)} />)}
+          {(simple ? [-1, 0, 1] : [0, 1]).map((copy, copyIndex) => <div key={copy} ref={copy === 0 ? sequenceRef : undefined} className="gallery-sequence" aria-hidden={copy !== 0 || undefined}>
+            {(active || prepared || visited) && items.map((item, index) => <GalleryMedia key={item.src} item={item} active={active} reducedMotion={reducedMotion} duplicate={copy !== 0}
+              expanded={selected === index + copyIndex * items.length} onToggle={element => dock.current?.toggle(element)} />)}
           </div>)}
         </div>
       </div>

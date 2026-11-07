@@ -2,24 +2,27 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { startGalleryDrift, wrapGalleryOffset } from "./gallery-motion.js";
 
-function setup({ start = 0, width = 1000, rounded = false } = {}) {
+function setup({ start = 0, width = 1000, rounded = false, cycleStart = 0, loopWhilePaused = false } = {}) {
   let offset = start;
   let callback;
   let paused = false;
   let cancelled = false;
+  let writes = 0;
   const wraps = [];
   const rail = {
     get scrollLeft() { return offset; },
-    set scrollLeft(value) { offset = rounded ? Math.round(value) : value; },
+    set scrollLeft(value) { writes++; offset = rounded ? Math.round(value) : value; },
   };
   const stop = startGalleryDrift(rail, {
     cycleWidth: () => width,
+    cycleStart: () => cycleStart,
+    loopWhilePaused,
     isPaused: () => paused,
     onWrap: () => wraps.push(rail.scrollLeft),
     requestFrame: cb => { callback = cb; return 1; },
     cancelFrame: () => { cancelled = true; },
   });
-  return { rail, stop, wraps, frame: time => callback(time), pause: value => { paused = value; }, cancelled: () => cancelled };
+  return { rail, stop, wraps, frame: time => callback(time), pause: value => { paused = value; }, cancelled: () => cancelled, writes: () => writes };
 }
 
 test("gallery moves left at a steady pace even when scroll offsets are rounded", () => {
@@ -58,4 +61,27 @@ test("returning from a background tab never catches up with a large jump", () =>
   assert.ok(motion.rail.scrollLeft <= 1.0241);
   motion.stop();
   assert.equal(motion.cancelled(), true);
+});
+
+test("mobile drift loops into the middle copy with a buffer on both sides", () => {
+  const motion = setup({ start: 1999.5, cycleStart: 1000, loopWhilePaused: true });
+  motion.frame(0);
+  motion.frame(50);
+  assert.ok(Math.abs(motion.rail.scrollLeft - 1000.3) < .0001);
+  assert.equal(motion.wraps.length, 1);
+});
+
+test("native swiping loops in either direction while drift is paused", () => {
+  const motion = setup({ start: 1500, cycleStart: 1000, loopWhilePaused: true });
+  motion.pause(true);
+  motion.rail.scrollLeft = 980;
+  motion.frame(0);
+  assert.equal(motion.rail.scrollLeft, 1980);
+  motion.rail.scrollLeft = 2020;
+  motion.frame(50);
+  assert.equal(motion.rail.scrollLeft, 1020);
+  const writes = motion.writes();
+  motion.frame(100);
+  motion.frame(150);
+  assert.equal(motion.writes(), writes, "do not interrupt native momentum with redundant scroll writes");
 });

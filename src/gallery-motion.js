@@ -5,8 +5,11 @@ export function wrapGalleryOffset(offset, cycleWidth) {
 
 export function startGalleryDrift(rail, {
   cycleWidth,
+  cycleStart = () => 0,
+  loopWhilePaused = false,
   isPaused,
   onWrap,
+  onManualScroll,
   speed = 16,
   requestFrame = requestAnimationFrame,
   cancelFrame = cancelAnimationFrame,
@@ -20,13 +23,19 @@ export function startGalleryDrift(rail, {
     const elapsed = previousTime === undefined ? 0 : Math.min(time - previousTime, 64);
     previousTime = time;
     // Keep fractional movement even on browsers that round native scroll offsets.
-    if (Math.abs(rail.scrollLeft - lastWritten) > 1) position = rail.scrollLeft;
-    if (!isPaused()) {
-      const next = position + elapsed * speed / 1000;
+    if (Math.abs(rail.scrollLeft - lastWritten) > 1) {
+      position = rail.scrollLeft;
+      onManualScroll?.();
+    }
+    const paused = isPaused();
+    if (!paused || loopWhilePaused) {
+      const next = paused ? rail.scrollLeft : position + elapsed * speed / 1000;
       const width = cycleWidth();
-      position = wrapGalleryOffset(next, width);
-      if (width > 0 && next >= width) onWrap?.();
-      rail.scrollLeft = position;
+      const start = cycleStart();
+      position = wrapGalleryOffset(next - start, width) + start;
+      const wrapped = width > 0 && (next < start || next >= start + width);
+      if (wrapped) onWrap?.({ from: next, to: position });
+      if (!paused || wrapped) rail.scrollLeft = position;
       lastWritten = rail.scrollLeft;
     } else {
       position = rail.scrollLeft;

@@ -19,6 +19,15 @@ const navigationItems = [
 ];
 const availableTabs = navigationItems.filter(item => !item.disabled).map(item => item.id);
 
+function ContactLinks({ className }) {
+  return <div className={className}>
+    <HoverText>
+      Say hi via <a href="mailto:hello@nickpyl.space"><InteractiveLabel>email</InteractiveLabel></a>, <a href="https://www.instagram.com/nickphylm/" target="_blank" rel="noreferrer" aria-label="Nick Pyl on Instagram"><InteractiveLabel>instagram</InteractiveLabel></a>, or {" "}
+      <a href="https://x.com/nickpyl" target="_blank" rel="noreferrer" aria-label="Nick Pyl on Twitter"><InteractiveLabel>twitter</InteractiveLabel></a>
+    </HoverText>
+  </div>;
+}
+
 function AmsterdamClock() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -128,10 +137,7 @@ export default function HomeRedesign({ projects }) {
             </button>)}
         </div>
       </nav>
-      <HoverText>
-        Say hi via <a href="mailto:hello@nickpyl.space"><InteractiveLabel>email</InteractiveLabel></a>, <a href="https://www.instagram.com/nickphylm/" target="_blank" rel="noreferrer" aria-label="Nick Pyl on Instagram"><InteractiveLabel>instagram</InteractiveLabel></a>, or {" "}
-        <a href="https://x.com/nickpyl" target="_blank" rel="noreferrer" aria-label="Nick Pyl on Twitter"><InteractiveLabel>twitter</InteractiveLabel></a>
-      </HoverText>
+      <ContactLinks className="portfolio-contact-top" />
     </header>
 
     <section className="portfolio-work" data-active={activeView !== "about"} aria-hidden={activeView === "about"} aria-label="Selected projects">
@@ -155,6 +161,7 @@ export default function HomeRedesign({ projects }) {
           }}><InteractiveLabel>Fuse</InteractiveLabel></a>,<br /> where I redesigned the product experience.</HoverText>
         </>}
       </div>
+      <ContactLinks className="portfolio-contact-bottom" />
       <AmsterdamClock />
     </footer>
   </main>;

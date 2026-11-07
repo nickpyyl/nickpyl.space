@@ -16,10 +16,10 @@ export function getDockTransforms(items, pointerX, { radius, magnification = .35
   });
 }
 
-export function getPressedTransforms(items, selectedIndex, { left, top, maxWidth }) {
+export function getPressedTransforms(items, selectedIndex, { left, top, maxWidth, maxScale = 2.05 }) {
   const selected = items[selectedIndex];
   const bottom = selected.y + selected.height / 2;
-  const scale = Math.min(2.05, maxWidth / selected.width, Math.max(.1, (bottom - top) / selected.height));
+  const scale = Math.min(maxScale, maxWidth / selected.width, Math.max(.1, (bottom - top) / selected.height));
   const extra = selected.width * (scale - 1);
   const offset = left - selected.left;
   return items.map((item, index) => ({
@@ -29,7 +29,7 @@ export function getPressedTransforms(items, selectedIndex, { left, top, maxWidth
   }));
 }
 
-export function createGalleryDock(rail, { reducedMotion = false, onSelect = () => {} } = {}) {
+export function createGalleryDock(rail, { reducedMotion = false, simple = false, onSelect = () => {} } = {}) {
   const sequences = [...rail.querySelectorAll('.gallery-sequence')];
   const elements = sequences.flatMap(sequence => [...sequence.children]);
   const gallery = rail.closest('.portfolio-gallery');
@@ -62,6 +62,7 @@ export function createGalleryDock(rail, { reducedMotion = false, onSelect = () =
         left: page.getBoundingClientRect().left + margin,
         top: page.querySelector('.portfolio-top').getBoundingClientRect().bottom + 32,
         maxWidth: rail.clientWidth - margin * 2,
+        maxScale: simple ? 1.6 : 2.05,
       });
       gallery.style.setProperty('--caption-width', `${metrics[selected].width * transforms[selected].scale}px`);
     } else {
@@ -81,7 +82,7 @@ export function createGalleryDock(rail, { reducedMotion = false, onSelect = () =
   }
 
   function move(event) {
-    if (selected !== null || reducedMotion || event.pointerType !== 'mouse' || !hover.matches) return;
+    if (simple || selected !== null || reducedMotion || event.pointerType !== 'mouse' || !hover.matches) return;
     point = { x: event.clientX, y: event.clientY };
     schedule();
   }

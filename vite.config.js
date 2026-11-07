@@ -1,49 +1,25 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { DEFAULT_SECTION_ID, legacySectionPaths, sectionPaths, sectionTitles } from "./src/routes.js";
 
-// GitHub Pages needs a physical entry page for direct visits to each route.
-function routePages() {
-  return {
-    name: "route-pages",
+export default defineConfig({
+  plugins: [react(), {
+    name: "single-page-fallback",
     generateBundle: {
       order: "post",
       handler(_options, bundle) {
-        const html = bundle["index.html"].source;
-        bundle["index.html"].source = html.replace(
-          "<title>Nick Pyl</title>",
-          `<title>${sectionTitles[DEFAULT_SECTION_ID]}</title>`,
-        );
-
-        const entries = [
-          ...Object.entries(sectionPaths),
-          ...Object.entries(legacySectionPaths).map(([path, id]) => [id, path]),
-        ];
-        for (const [sectionId, path] of entries) {
-          if (path === "/") continue;
-
-          this.emitFile({
-            type: "asset",
-            fileName: `${path.slice(1)}/index.html`,
-            source: html.replace(
-              "<title>Nick Pyl</title>",
-              `<title>${sectionTitles[sectionId]}</title>`,
-            ).replace(
-              'rel="canonical" href="https://nickpyl.space/"',
-              `rel="canonical" href="https://nickpyl.space${sectionPaths[sectionId]}"`,
-            ),
-          });
-        }
+        // Old bookmarks on GitHub Pages return to the single portfolio page.
+        this.emitFile({ type: "asset", fileName: "404.html", source: bundle["index.html"].source });
       },
     },
-  };
-}
-
-export default defineConfig({
-  plugins: [react(), routePages()],
-  server: {
-    host: "127.0.0.1",
-    port: 5173,
-    strictPort: true,
-  },
+  }, {
+    name: "production-privacy-policy",
+    apply: "build",
+    transformIndexHtml() {
+      return [{ tag: "meta", attrs: {
+        "http-equiv": "Content-Security-Policy",
+        content: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'",
+      }, injectTo: "head-prepend" }];
+    },
+  }],
+  server: { host: "127.0.0.1", port: 5173, strictPort: true },
 });

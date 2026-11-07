@@ -12,7 +12,8 @@ export function observeWorkVideo(video, src, { priority = false, sourceFor = get
   let loaded = false;
   let loadObserver;
   let visibilityObserver;
-  const playbackThreshold = window.matchMedia?.("(pointer: coarse)").matches ? 0.25 : 0.01;
+  const touch = window.matchMedia?.("(pointer: coarse)").matches;
+  const playbackThreshold = touch ? 0.25 : 0.01;
 
   function load() {
     if (loaded) return;
@@ -44,7 +45,7 @@ export function observeWorkVideo(video, src, { priority = false, sourceFor = get
     if (!priority) {
       loadObserver = new IntersectionObserver(([entry]) => {
         if (entry.isIntersecting) load();
-      }, { root: video.closest(".work-rail"), rootMargin: "360px 600px", threshold: 0 });
+      }, { root: video.closest(".work-rail"), rootMargin: touch ? "0px 160px" : "360px 600px", threshold: 0 });
       loadObserver.observe(video);
     }
   } else {

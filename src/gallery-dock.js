@@ -39,6 +39,8 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
   let point;
   let frame;
   let selected = null;
+  let closingElement;
+  let closingTimer;
   const painted = new Map();
 
   function paint() {
@@ -89,7 +91,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
   }
 
   function move(event) {
-    if (gallery.dataset.dragging === 'true' || simple || selected !== null || reducedMotion || event.pointerType !== 'mouse' || !hover.matches) return;
+    if (gallery.dataset.dragging === 'true' || gallery.dataset.closing === 'true' || simple || selected !== null || reducedMotion || event.pointerType !== 'mouse' || !hover.matches) return;
     point = { x: event.clientX, y: event.clientY };
     schedule();
   }
@@ -115,6 +117,16 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
     if (selected === null) reset();
   }
 
+  function finishClosing() {
+    clearTimeout(closingTimer);
+    closingElement = undefined;
+    delete gallery.dataset.closing;
+  }
+
+  function transitionEnd(event) {
+    if (event.target === closingElement && event.propertyName === 'transform') finishClosing();
+  }
+
   function clear() {
     if (selected === null) return reset();
     const transforms = elements.map(element => new DOMMatrixReadOnly(getComputedStyle(element).transform));
@@ -134,6 +146,12 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
       item.style.transform = `translate3d(${current.e + scrollDelta}px, ${current.f}px, 0) scale(${current.a})`;
       item.style.borderRadius = `${4 / current.a}px`;
     });
+    finishClosing();
+    if (!reducedMotion && page.dataset.input !== 'keyboard') {
+      gallery.dataset.closing = 'true';
+      closingElement = element;
+      closingTimer = setTimeout(finishClosing, 370);
+    }
     // Preserve the visible pose while committing the row's new scroll position.
     element.getBoundingClientRect();
     for (const item of elements) item.style.removeProperty('transition');
@@ -146,6 +164,11 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
     const index = elements.indexOf(element);
     if (index < 0) return;
     if (index === selected) return clear();
+    finishClosing();
+    const margin = parseFloat(getComputedStyle(page.querySelector('.portfolio-top')).paddingLeft);
+    const travel = Math.abs(element.getBoundingClientRect().left - page.getBoundingClientRect().left - margin);
+    const duration = Math.round(340 + 120 * Math.min(1, travel / rail.clientWidth));
+    gallery.style.setProperty('--dock-open-duration', `${duration}ms`);
     selected = index;
     point = undefined;
     onSelect(index);
@@ -177,6 +200,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
   rail.addEventListener('pointermove', move);
   rail.addEventListener('pointerleave', leave);
   rail.addEventListener('pointercancel', leave);
+  gallery.addEventListener('transitionend', transitionEnd);
   window.addEventListener('keydown', keydown);
   window.addEventListener('click', dismissOnClick, true);
   hover.addEventListener('change', leave);
@@ -185,12 +209,15 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
   document.addEventListener('visibilitychange', visibility);
 
   function destroy() {
+    finishClosing();
+    gallery.style.removeProperty('--dock-open-duration');
     reset();
     resize.disconnect();
     rail.removeEventListener('pointerenter', move);
     rail.removeEventListener('pointermove', move);
     rail.removeEventListener('pointerleave', leave);
     rail.removeEventListener('pointercancel', leave);
+    gallery.removeEventListener('transitionend', transitionEnd);
     window.removeEventListener('keydown', keydown);
     window.removeEventListener('click', dismissOnClick, true);
     hover.removeEventListener('change', leave);

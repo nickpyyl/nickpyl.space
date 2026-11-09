@@ -10,7 +10,8 @@
 .portfolio-gallery[data-active="true"] .gallery-track { will-change: transform; }
 .gallery-sequence { position: relative; display: flex; flex: none; gap: 8px; height: 100%; padding-right: 8px; }
 .gallery-piece { position: relative; flex: none; height: 100%; margin: 0; overflow: hidden; border-radius: 4px; background: oklch(0.97 0 0); transition: transform 200ms cubic-bezier(.22,1,.36,1); }
-.portfolio-gallery[data-expanded="true"] .gallery-piece { transition-duration: 280ms; }
+.portfolio-gallery[data-expanded="true"] .gallery-piece { transition-duration: var(--dock-open-duration, 340ms); transition-timing-function: cubic-bezier(.25,.1,.25,1); }
+.portfolio-gallery[data-closing="true"] .gallery-piece { transition-duration: 320ms; transition-timing-function: cubic-bezier(.25,.1,.25,1); }
 .gallery-piece:has(.gallery-open[aria-expanded="true"]) { z-index: 2; }
 .gallery-piece :is(img, video) { display: block; width: 100%; height: 100%; object-fit: contain; }
 .gallery-open { position: absolute; inset: 0; padding: 0; border: 0; background: transparent; color: inherit; cursor: default; border-radius: inherit; }

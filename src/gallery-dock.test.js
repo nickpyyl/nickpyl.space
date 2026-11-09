@@ -102,7 +102,7 @@ test('a stationary pointer follows the moving line without measuring layout ever
   };
   const rail = {
     querySelectorAll: () => [sequence],
-    closest: () => ({ dataset: {} }),
+    closest: () => ({ dataset: {}, style: style(), addEventListener() {}, removeEventListener() {} }),
     addEventListener(type, handler) { listeners.set(type, handler); },
     removeEventListener() {},
   };

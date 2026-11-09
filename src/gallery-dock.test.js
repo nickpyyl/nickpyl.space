@@ -87,3 +87,49 @@ test('mobile expansion leaves room for a neighboring card without changing the b
   assert.equal(neighborLeft - right, 8);
   assert.ok(neighborLeft < 393);
 });
+
+test('a stationary pointer follows the moving line without measuring layout every frame', async t => {
+  const { createGalleryDock } = await import('./gallery-dock.js');
+  let measurements = 0;
+  let position = 1000;
+  let pending;
+  const listeners = new Map();
+  const style = () => ({ removeProperty(key) { delete this[key]; } });
+  const elements = [{ style: style() }, { style: style() }];
+  const sequence = {
+    children: elements,
+    getBoundingClientRect() { measurements++; return { left: 0, top: 200, height: 160 }; },
+  };
+  const rail = {
+    querySelectorAll: () => [sequence],
+    closest: () => ({ dataset: {} }),
+    addEventListener(type, handler) { listeners.set(type, handler); },
+    removeEventListener() {},
+  };
+  const globals = {
+    window: { matchMedia: () => ({ matches: true, addEventListener() {}, removeEventListener() {} }), addEventListener() {}, removeEventListener() {} },
+    document: { hidden: false, addEventListener() {}, removeEventListener() {} },
+    ResizeObserver: class { observe() {} disconnect() {} },
+    getComputedStyle() { measurements++; return { columnGap: '8', width: '160' }; },
+    requestAnimationFrame(callback) { pending = callback; return 1; },
+    cancelAnimationFrame() { pending = undefined; },
+  };
+  const restore = [];
+  for (const [key, value] of Object.entries(globals)) {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, key);
+    Object.defineProperty(globalThis, key, { value, configurable: true });
+    restore.push(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key]);
+  }
+  const dock = createGalleryDock(rail, { scroll: { getPosition: () => position } });
+  t.after(() => { dock.destroy(); restore.forEach(reset => reset()); });
+  listeners.get('pointermove')({ pointerType: 'mouse', clientX: 80, clientY: 280 });
+  pending();
+  const first = elements[0].style.transform;
+  const initialMeasurements = measurements;
+  position += 80;
+  pending();
+  assert.notEqual(elements[0].style.transform, first, 'magnification follows the row under a stationary pointer');
+  assert.equal(measurements, initialMeasurements, 'hover frames reuse measured geometry');
+  listeners.get('pointerleave')();
+  assert.equal(pending, undefined, 'no frame loop continues when the pointer leaves');
+});

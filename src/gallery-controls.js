@@ -1,56 +1,10 @@
-import { wrapGalleryOffset } from "./gallery-motion.js";
+import { createLoopingTrack } from "./gallery-motion.js";
 
-export function createLoopingTrack(track, { width, initialOffset = 0, reducedMotion = false, speed = 16 }) {
-  let cycle = width;
-  let position = cycle + initialOffset;
-  let animation;
-
-  const transform = offset => `translate3d(${-offset}px, 0, 0)`;
-  const getPosition = () => animation
-    ? cycle + wrapGalleryOffset(Number(animation.currentTime || 0) * speed / 1000, cycle)
-    : position;
-
-  function pause() {
-    position = getPosition();
-    animation?.cancel();
-    animation = undefined;
-    track.style.transform = transform(position);
-  }
-
-  function setPosition(next, wrap = false) {
-    pause();
-    position = wrap ? cycle + wrapGalleryOffset(next - cycle, cycle) : next;
-    track.style.transform = transform(position);
-  }
-
-  function resume() {
-    if (animation || reducedMotion || cycle <= 0) return;
-    position = cycle + wrapGalleryOffset(position - cycle, cycle);
-    track.style.transform = transform(position);
-    animation = track.animate([
-      { transform: transform(cycle) },
-      { transform: transform(cycle * 2) },
-    ], { duration: cycle / speed * 1000, iterations: Infinity, easing: "linear" });
-    animation.currentTime = (position - cycle) / speed * 1000;
-  }
-
-  function resize(nextWidth) {
-    const relative = cycle > 0 ? getPosition() / cycle : 1;
-    pause();
-    cycle = nextWidth;
-    setPosition(relative * cycle, true);
-  }
-
-  setPosition(position);
-  return { getPosition, setPosition, pause, resume, resize, destroy() {
-    animation?.cancel();
-    track.style.removeProperty("transform");
-  } };
-}
-
-export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progress, onInteract }) {
+export function createGalleryMotion(rail, sequence, { reducedMotion, simple = false, progress, onInteract }) {
   const track = rail.querySelector('.gallery-track');
   const gallery = rail.closest('.portfolio-gallery');
+  const page = rail.closest('.portfolio-page');
+  const wheelTarget = simple ? rail : page;
   let width = sequence.getBoundingClientRect().width;
   const loop = createLoopingTrack(track, {
     width,
@@ -58,6 +12,13 @@ export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progr
       ? reducedMotion ? 0 : sequence.offsetHeight * .6 + parseFloat(getComputedStyle(track).paddingLeft)
       : width * (progress - 1),
     reducedMotion,
+    onWrap: () => {
+      const copies = sequence.nextElementSibling.querySelectorAll('video');
+      sequence.querySelectorAll('video').forEach((video, index) => {
+        const copy = copies[index];
+        if (!copy.paused && copy.readyState >= 2 && video.readyState >= 1) video.currentTime = copy.currentTime;
+      });
+    },
   });
   const paused = new Set();
   let gesture;
@@ -92,7 +53,8 @@ export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progr
       setPaused('pointer', false);
       return;
     }
-    if (event.button !== 0 || event.target.closest('video[controls], input, textarea, select')) return;
+    if (event.button !== 0 || event.target.closest('a, video[controls], input, textarea, select')) return;
+    if (event.pointerType === 'mouse') event.preventDefault();
     stopMomentum();
     skipClick = false;
     setPaused('focus', false);
@@ -106,7 +68,7 @@ export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progr
     const dy = gesture.y - event.clientY;
     if (!gesture.axis) {
       if (Math.hypot(dx, dy) < 6) return;
-      gesture.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      gesture.axis = !simple || Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
       gallery.dataset.dragging = 'true';
       onInteract();
       rail.setPointerCapture(event.pointerId);
@@ -154,6 +116,9 @@ export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progr
     setPaused('wheel', true);
     onInteract();
     const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? rail.clientWidth : 1;
+    if (!simple && page.scrollHeight > window.innerHeight && Math.abs(event.deltaY) >= Math.abs(event.deltaX)) {
+      window.scrollBy({ top: event.deltaY * unit, behavior: 'instant' });
+    }
     loop.setPosition(loop.getPosition() + delta * unit, true);
     timer = setTimeout(() => setPaused('wheel', false), 100);
   }
@@ -188,7 +153,7 @@ export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progr
   rail.addEventListener('pointerup', finish);
   rail.addEventListener('pointercancel', finish);
   rail.addEventListener('lostpointercapture', finish);
-  rail.addEventListener('wheel', wheel, { passive: false });
+  wheelTarget.addEventListener('wheel', wheel, { passive: false });
   rail.addEventListener('click', click, true);
   document.addEventListener('visibilitychange', visibility);
   sync();
@@ -201,7 +166,7 @@ export function createMobileGalleryMotion(rail, sequence, { reducedMotion, progr
     rail.removeEventListener('pointerup', finish);
     rail.removeEventListener('pointercancel', finish);
     rail.removeEventListener('lostpointercapture', finish);
-    rail.removeEventListener('wheel', wheel);
+    wheelTarget.removeEventListener('wheel', wheel);
     rail.removeEventListener('click', click, true);
     document.removeEventListener('visibilitychange', visibility);
     delete gallery.dataset.dragging;

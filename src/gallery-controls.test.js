@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createLoopingTrack, createMobileGalleryMotion } from './mobile-gallery-motion.js';
+import { createGalleryMotion } from './gallery-controls.js';
 
 function fakeTrack() {
   const animations = [];
@@ -15,59 +15,7 @@ function fakeTrack() {
   return { track, animations };
 }
 
-test('the running line uses one infinite transform animation with fractional positioning', () => {
-  const { track, animations } = fakeTrack();
-  const loop = createLoopingTrack(track, { width: 1000, initialOffset: 120 });
-  loop.resume();
-  assert.equal(animations.length, 1);
-  assert.deepEqual(animations[0].options, { duration: 62500, iterations: Infinity, easing: 'linear' });
-  assert.deepEqual(animations[0].keyframes, [
-    { transform: 'translate3d(-1000px, 0, 0)' },
-    { transform: 'translate3d(-2000px, 0, 0)' },
-  ]);
-  animations[0].animation.currentTime += 16.67;
-  assert.ok(Math.abs(loop.getPosition() - 1120.26672) < .00001);
-  loop.destroy();
-});
-
-test('pause, tap alignment and resume preserve the visible position without a restart delay', () => {
-  const { track, animations } = fakeTrack();
-  const loop = createLoopingTrack(track, { width: 1000 });
-  loop.resume();
-  animations[0].animation.currentTime = 12345;
-  loop.pause();
-  assert.equal(loop.getPosition(), 1197.52);
-  assert.equal(animations[0].animation.cancelled, true);
-  loop.setPosition(2050);
-  assert.equal(loop.getPosition(), 2050, 'keep the same copy during the collapse transition');
-  loop.resume();
-  assert.equal(loop.getPosition(), 1050, 'resume from its identical place in the loop');
-  assert.equal(animations.length, 2);
-});
-
-test('manual movement wraps in both directions and resizing preserves the item position', () => {
-  const { track } = fakeTrack();
-  const loop = createLoopingTrack(track, { width: 1000 });
-  loop.setPosition(940, true);
-  assert.equal(loop.getPosition(), 1940);
-  loop.setPosition(2040, true);
-  assert.equal(loop.getPosition(), 1040);
-  loop.resize(500);
-  assert.equal(loop.getPosition(), 520);
-});
-
-test('reduced motion keeps the line still while manual browsing remains available', () => {
-  const { track, animations } = fakeTrack();
-  const loop = createLoopingTrack(track, { width: 1000, reducedMotion: true });
-  loop.resume();
-  loop.setPosition(1150, true);
-  assert.equal(loop.getPosition(), 1150);
-  assert.equal(animations.length, 0);
-  loop.destroy();
-  assert.equal(track.style.transform, undefined);
-});
-
-function controls(t) {
+function controls(t, { simple = true } = {}) {
   const listeners = new Map();
   const pageListeners = new Map();
   const captures = new Set();
@@ -100,7 +48,7 @@ function controls(t) {
     restore.push(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key]);
   }
   let interactions = 0;
-  const motion = createMobileGalleryMotion(rail, sequence, { reducedMotion: true, onInteract: () => { interactions++; } });
+  const motion = createGalleryMotion(rail, sequence, { reducedMotion: true, simple, onInteract: () => { interactions++; } });
   t.after(() => {
     motion.destroy();
     restore.forEach(reset => reset());
@@ -177,4 +125,15 @@ test('transferring implicit touch capture from a card to the rail does not cance
   assert.equal(motion.getPosition(), 1100);
   assert.equal(captures.size, 1);
   pointer('pointerup', 100, 400, 130);
+});
+
+test('desktop wheel browsing covers the page without moving native scroll offsets', t => {
+  const { motion, listeners, pageListeners } = controls(t, { simple: false });
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', { value: { innerHeight: 900 }, configurable: true });
+  t.after(() => previous ? Object.defineProperty(globalThis, 'window', previous) : delete globalThis.window);
+  assert.equal(listeners.has('wheel'), false);
+  pageListeners.get('wheel')({ deltaX: 0, deltaY: 120, deltaMode: 0, preventDefault() {} });
+  assert.equal(motion.getPosition(), 1120);
+  for (const type of ['pointerdown', 'pointermove', 'pointerup']) assert.equal(pageListeners.has(type), false);
 });

@@ -1,87 +1,98 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import { startGalleryDrift, wrapGalleryOffset } from "./gallery-motion.js";
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createLoopingTrack, wrapGalleryOffset } from './gallery-motion.js';
 
-function setup({ start = 0, width = 1000, rounded = false, cycleStart = 0, loopWhilePaused = false } = {}) {
-  let offset = start;
-  let callback;
-  let paused = false;
-  let cancelled = false;
-  let writes = 0;
-  const wraps = [];
-  const rail = {
-    get scrollLeft() { return offset; },
-    set scrollLeft(value) { writes++; offset = rounded ? Math.round(value) : value; },
+function fakeTrack() {
+  const animations = [];
+  const track = {
+    style: { removeProperty(key) { delete this[key]; } },
+    animate(keyframes, options) {
+      const animation = { currentTime: 0, cancelled: false, cancel() { this.cancelled = true; } };
+      animations.push({ animation, keyframes, options });
+      return animation;
+    },
   };
-  const stop = startGalleryDrift(rail, {
-    cycleWidth: () => width,
-    cycleStart: () => cycleStart,
-    loopWhilePaused,
-    isPaused: () => paused,
-    onWrap: () => wraps.push(rail.scrollLeft),
-    requestFrame: cb => { callback = cb; return 1; },
-    cancelFrame: () => { cancelled = true; },
-  });
-  return { rail, stop, wraps, frame: time => callback(time), pause: value => { paused = value; }, cancelled: () => cancelled, writes: () => writes };
+  return { track, animations };
 }
 
-test("gallery moves left at a steady pace even when scroll offsets are rounded", () => {
-  const motion = setup({ rounded: true });
-  for (let time = 0; time <= 1000; time += 10) motion.frame(time);
-  assert.equal(motion.rail.scrollLeft, 16);
+test('the running line uses one infinite transform animation with fractional positioning', () => {
+  const { track, animations } = fakeTrack();
+  const loop = createLoopingTrack(track, { width: 1000, initialOffset: 120 });
+  loop.resume();
+  assert.equal(animations.length, 1);
+  assert.deepEqual(animations[0].options, { duration: 62500, iterations: Infinity, easing: 'linear' });
+  assert.deepEqual(animations[0].keyframes, [
+    { transform: 'translate3d(-1000px, 0, 0)' },
+    { transform: 'translate3d(-2000px, 0, 0)' },
+  ]);
+  animations[0].animation.currentTime += 16.67;
+  assert.ok(Math.abs(loop.getPosition() - 1120.26672) < .00001);
+  loop.destroy();
 });
 
-test("the duplicate sequence wraps without a gap and supports reverse dragging", () => {
-  const motion = setup({ start: 999.5 });
-  motion.frame(0);
-  motion.frame(50);
-  assert.ok(Math.abs(motion.rail.scrollLeft - .3) < .0001);
-  assert.deepEqual(motion.wraps, [999.5]);
+test('pause, tap alignment and resume preserve the visible position without a restart delay', () => {
+  const { track, animations } = fakeTrack();
+  const loop = createLoopingTrack(track, { width: 1000 });
+  loop.resume();
+  animations[0].animation.currentTime = 12345;
+  loop.pause();
+  assert.equal(loop.getPosition(), 1197.52);
+  assert.equal(animations[0].animation.cancelled, true);
+  loop.setPosition(2050);
+  assert.equal(loop.getPosition(), 2050, 'keep the same copy during the collapse transition');
+  loop.resume();
+  assert.equal(loop.getPosition(), 1050, 'resume from its identical place in the loop');
+  assert.equal(animations.length, 2);
+});
+
+test('manual movement wraps in both directions and resizing preserves the item position', () => {
+  const { track } = fakeTrack();
+  const loop = createLoopingTrack(track, { width: 1000 });
+  loop.setPosition(940, true);
+  assert.equal(loop.getPosition(), 1940);
+  loop.setPosition(2040, true);
+  assert.equal(loop.getPosition(), 1040);
+  loop.resize(500);
+  assert.equal(loop.getPosition(), 520);
+});
+
+test('reduced motion keeps the line still while manual browsing remains available', () => {
+  const { track, animations } = fakeTrack();
+  const loop = createLoopingTrack(track, { width: 1000, reducedMotion: true });
+  loop.resume();
+  loop.setPosition(1150, true);
+  assert.equal(loop.getPosition(), 1150);
+  assert.equal(animations.length, 0);
+  loop.destroy();
+  assert.equal(track.style.transform, undefined);
+});
+
+test('offsets wrap in either direction, including an empty sequence', () => {
   assert.equal(wrapGalleryOffset(-60, 1000), 940);
   assert.equal(wrapGalleryOffset(2040, 1000), 40);
+  assert.equal(wrapGalleryOffset(10, 0), 0);
 });
 
-test("pausing drift and resuming keeps a manually chosen position", () => {
-  const motion = setup();
-  motion.frame(0);
-  motion.pause(true);
-  motion.frame(1000);
-  assert.equal(motion.rail.scrollLeft, 0);
-  motion.rail.scrollLeft = 480;
-  motion.frame(1100);
-  motion.pause(false);
-  motion.frame(1150);
-  assert.ok(Math.abs(motion.rail.scrollLeft - 480.8) < .0001);
-});
-
-test("returning from a background tab never catches up with a large jump", () => {
-  const motion = setup();
-  motion.frame(0);
-  motion.frame(100000);
-  assert.ok(motion.rail.scrollLeft <= 1.0241);
-  motion.stop();
-  assert.equal(motion.cancelled(), true);
-});
-
-test("mobile drift loops into the middle copy with a buffer on both sides", () => {
-  const motion = setup({ start: 1999.5, cycleStart: 1000, loopWhilePaused: true });
-  motion.frame(0);
-  motion.frame(50);
-  assert.ok(Math.abs(motion.rail.scrollLeft - 1000.3) < .0001);
-  assert.equal(motion.wraps.length, 1);
-});
-
-test("native swiping loops in either direction while drift is paused", () => {
-  const motion = setup({ start: 1500, cycleStart: 1000, loopWhilePaused: true });
-  motion.pause(true);
-  motion.rail.scrollLeft = 980;
-  motion.frame(0);
-  assert.equal(motion.rail.scrollLeft, 1980);
-  motion.rail.scrollLeft = 2020;
-  motion.frame(50);
-  assert.equal(motion.rail.scrollLeft, 1020);
-  const writes = motion.writes();
-  motion.frame(100);
-  motion.frame(150);
-  assert.equal(motion.writes(), writes, "do not interrupt native momentum with redundant scroll writes");
+test('video synchronization runs only at loop boundaries and is cancelled when paused', t => {
+  let scheduled;
+  let delay;
+  let wraps = 0;
+  const originalSet = globalThis.setTimeout;
+  const originalClear = globalThis.clearTimeout;
+  globalThis.setTimeout = (callback, ms) => { scheduled = callback; delay = ms; return 1; };
+  globalThis.clearTimeout = () => { scheduled = undefined; };
+  t.after(() => { globalThis.setTimeout = originalSet; globalThis.clearTimeout = originalClear; });
+  const { track } = fakeTrack();
+  const loop = createLoopingTrack(track, { width: 1000, initialOffset: 200, onWrap: () => { wraps++; } });
+  loop.resume();
+  assert.equal(delay, 50000);
+  assert.equal(wraps, 0);
+  scheduled();
+  assert.equal(wraps, 1);
+  assert.equal(delay, 62500);
+  loop.pause();
+  assert.equal(scheduled, undefined);
+  loop.resume();
+  loop.destroy();
+  assert.equal(scheduled, undefined);
 });

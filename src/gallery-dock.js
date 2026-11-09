@@ -39,9 +39,11 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
   let point;
   let frame;
   let selected = null;
+  const painted = new Map();
 
   function paint() {
     frame = undefined;
+    const position = scroll ? scroll.getPosition() : rail.scrollLeft;
     if (!metrics) {
       metrics = sequences.flatMap(sequence => {
         const bounds = sequence.getBoundingClientRect();
@@ -49,16 +51,17 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
         let left = bounds.left;
         return [...sequence.children].map(element => {
           const width = parseFloat(getComputedStyle(element).width);
-          const item = { left, y: bounds.top + bounds.height / 2, width, height: bounds.height };
+          const item = { left: left + position, y: bounds.top + bounds.height / 2, width, height: bounds.height };
           left += width + gap;
           return item;
         });
       });
     }
+    const visibleMetrics = metrics.map(item => ({ ...item, left: item.left - position }));
     let transforms;
     if (selected !== null) {
       const margin = parseFloat(getComputedStyle(page.querySelector('.portfolio-top')).paddingLeft);
-      transforms = getPressedTransforms(metrics, selected, {
+      transforms = getPressedTransforms(visibleMetrics, selected, {
         left: page.getBoundingClientRect().left + margin,
         top: page.querySelector('.portfolio-top').getBoundingClientRect().bottom + 32,
         maxWidth: rail.clientWidth - margin * 2,
@@ -68,13 +71,17 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
     } else {
       const { height, y } = metrics[0];
       const proximity = smooth(clamp((height * .85 - Math.abs(point.y - y)) / (height * .35)));
-      transforms = getDockTransforms(metrics, point.x, { radius: height * 1.8, magnification: .35 * proximity });
+      transforms = getDockTransforms(visibleMetrics, point.x, { radius: height * 1.8, magnification: .35 * proximity });
     }
     transforms.forEach(({ x, y = 0, scale }, index) => {
-      elements[index].style.setProperty('--dock-x', `${x.toFixed(3)}px`);
-      elements[index].style.setProperty('--dock-y', `${y.toFixed(3)}px`);
-      elements[index].style.setProperty('--dock-scale', scale.toFixed(4));
+      const transform = `translate3d(${x.toFixed(3)}px, ${y.toFixed(3)}px, 0) scale(${scale.toFixed(4)})`;
+      if (painted.get(index) === transform) return;
+      elements[index].style.transform = transform;
+      elements[index].style.borderRadius = `${4 / scale}px`;
+      painted.set(index, transform);
     });
+    // Track the compositor's position while hovering, without remeasuring the row.
+    if (point && selected === null && !document.hidden) schedule();
   }
 
   function schedule() {
@@ -82,7 +89,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
   }
 
   function move(event) {
-    if (simple || selected !== null || reducedMotion || event.pointerType !== 'mouse' || !hover.matches) return;
+    if (gallery.dataset.dragging === 'true' || simple || selected !== null || reducedMotion || event.pointerType !== 'mouse' || !hover.matches) return;
     point = { x: event.clientX, y: event.clientY };
     schedule();
   }
@@ -97,10 +104,10 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
     frame = undefined;
     metrics = undefined;
     point = undefined;
+    painted.clear();
     for (const element of elements) {
-      element.style.removeProperty('--dock-x');
-      element.style.removeProperty('--dock-y');
-      element.style.removeProperty('--dock-scale');
+      element.style.removeProperty('transform');
+      element.style.removeProperty('border-radius');
     }
   }
 
@@ -109,7 +116,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
   }
 
   function clear() {
-    if (selected === null) return;
+    if (selected === null) return reset();
     const transforms = elements.map(element => new DOMMatrixReadOnly(getComputedStyle(element).transform));
     const element = elements[selected];
     const transform = transforms[selected];
@@ -124,9 +131,8 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
     elements.forEach((item, index) => {
       const current = transforms[index];
       item.style.transition = 'none';
-      item.style.setProperty('--dock-x', `${current.e + scrollDelta}px`);
-      item.style.setProperty('--dock-y', `${current.f}px`);
-      item.style.setProperty('--dock-scale', String(current.a));
+      item.style.transform = `translate3d(${current.e + scrollDelta}px, ${current.f}px, 0) scale(${current.a})`;
+      item.style.borderRadius = `${4 / current.a}px`;
     });
     // Preserve the visible pose while committing the row's new scroll position.
     element.getBoundingClientRect();
@@ -160,6 +166,10 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
     }
   }
 
+  function visibility() {
+    if (document.hidden) leave();
+  }
+
   const resize = new ResizeObserver(invalidate);
   resize.observe(rail);
   for (const sequence of sequences) resize.observe(sequence);
@@ -172,6 +182,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
   hover.addEventListener('change', leave);
   window.addEventListener('scroll', invalidate, true);
   window.addEventListener('blur', leave);
+  document.addEventListener('visibilitychange', visibility);
 
   function destroy() {
     reset();
@@ -185,6 +196,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
     hover.removeEventListener('change', leave);
     window.removeEventListener('scroll', invalidate, true);
     window.removeEventListener('blur', leave);
+    document.removeEventListener('visibilitychange', visibility);
   }
   return { toggle, clear, destroy };
 }

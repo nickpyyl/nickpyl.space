@@ -150,7 +150,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
     if (!reducedMotion && page.dataset.input !== 'keyboard') {
       gallery.dataset.closing = 'true';
       closingElement = element;
-      closingTimer = setTimeout(finishClosing, 370);
+      closingTimer = setTimeout(finishClosing, 290);
     }
     // Preserve the visible pose while committing the row's new scroll position.
     element.getBoundingClientRect();
@@ -167,7 +167,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
     finishClosing();
     const margin = parseFloat(getComputedStyle(page.querySelector('.portfolio-top')).paddingLeft);
     const travel = Math.abs(element.getBoundingClientRect().left - page.getBoundingClientRect().left - margin);
-    const duration = Math.round(340 + 120 * Math.min(1, travel / rail.clientWidth));
+    const duration = Math.round(280 + 60 * Math.min(1, travel / rail.clientWidth));
     gallery.style.setProperty('--dock-open-duration', `${duration}ms`);
     selected = index;
     point = undefined;

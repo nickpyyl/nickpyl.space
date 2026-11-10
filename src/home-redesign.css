@@ -43,10 +43,45 @@ button { font: inherit; }
   gap: 24px;
   padding: calc(var(--page-gutter) - 8px) var(--page-gutter);
 }
-.portfolio-email { display: inline-flex; align-items: center; gap: 8px; padding-left: 16px; border-radius: 999px; background: var(--home-surface); white-space: nowrap; }
-.portfolio-email .email-address { color: var(--home-text); -webkit-user-select: text; user-select: text; }
+.portfolio-email {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--home-strong);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.portfolio-email::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  height: 30px;
+  margin-block: auto;
+  border-radius: inherit;
+  background: var(--home-surface);
+  transition: transform 150ms cubic-bezier(.22,1,.36,1);
+}
+.portfolio-page .portfolio-email:focus-visible { border-radius: 999px; }
+.portfolio-email .email-address { color: var(--home-text); -webkit-user-select: text; user-select: text; transition: color 150ms ease; }
 .portfolio-email .email-address::selection { color: HighlightText; background: Highlight; }
-.portfolio-email button { min-width: calc(5ch + 14px); min-height: 38px; padding: 0 14px 0 0; border: 0; border-radius: 0 999px 999px 0; background: transparent; color: var(--home-strong); cursor: pointer; }
+.email-action { display: grid; min-width: 5ch; }
+.email-action > span { grid-area: 1 / 1; transition: opacity 140ms ease, transform 180ms cubic-bezier(.22,1,.36,1); }
+.email-copied { opacity: 0; transform: translateY(4px); }
+.portfolio-email[data-copied="true"] .email-copy { opacity: 0; transform: translateY(-4px); }
+.portfolio-email[data-copied="true"] .email-copied { opacity: 1; transform: none; }
+@media (hover: hover) and (pointer: fine) {
+  .portfolio-email:hover::before { transform: scale(1.015, 1.05); }
+  .portfolio-email:hover .email-address { color: var(--home-strong); }
+}
+.portfolio-email:active::before { transform: scale(.985, .97); }
 .portfolio-navigation { display: flex; align-items: center; gap: 16px; }
 .portfolio-identity { display: flex; align-items: center; gap: 10px; }
 .portfolio-identity img { display: block; width: 22px; height: 22px; object-fit: cover; }
@@ -116,7 +151,7 @@ button { font: inherit; }
   bottom: 100%;
   width: clamp(100px, calc((50svh - var(--media-height) / 2 - var(--page-gutter) - 82px) * .8), 168px);
   display: grid;
-  gap: 10px;
+  gap: 4px;
   padding-bottom: 12px;
   opacity: 0;
   visibility: hidden;
@@ -124,7 +159,7 @@ button { font: inherit; }
   transition: opacity 160ms ease-out, transform 180ms cubic-bezier(.22,1,.36,1), visibility 0s 180ms;
 }
 .letterboxd-preview[data-open="true"] { visibility: visible; opacity: 1; transform: none; transition-delay: 0s; }
-.letterboxd-rating { text-align: right; font-size: 12px; color: var(--home-text); }
+.letterboxd-rating { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 12px; line-height: 1.2; color: var(--home-text); }
 .letterboxd-preview img { display: block; width: 100%; height: auto; border-radius: 4px; box-shadow: 0 8px 22px oklch(0 0 0 / .18); }
 .portfolio-page .interactive-label { position: relative; display: inline-block; transform-origin: center; transition: transform 180ms cubic-bezier(.22,1,.36,1); }
 .portfolio-page .home-hover-text > * { position: relative; display: inline-block; transition: transform 180ms cubic-bezier(.22,1,.36,1); }
@@ -178,7 +213,7 @@ button { font: inherit; }
   }
   .portfolio-page[data-view="about"] { display: grid; }
   .portfolio-top { grid-row: 1; gap: 4px; padding-block: max(10px, env(safe-area-inset-top)) 10px; }
-  .portfolio-email button { min-height: 44px; }
+  .portfolio-email { min-height: 44px; }
   .portfolio-navigation { width: 100%; justify-content: space-between; gap: 12px; }
   .portfolio-identity img { width: 20px; height: 20px; }
   .portfolio-identity a, .portfolio-tabs button { min-height: 44px; }
@@ -224,6 +259,7 @@ button { font: inherit; }
 }
 @media (prefers-reduced-motion: reduce) {
   .portfolio-page *, .portfolio-page *::before, .portfolio-page *::after { transition: none !important; animation: none !important; }
+  .portfolio-email:is(:hover, :active)::before, .portfolio-email .email-action > span { transform: none; }
   .portfolio-page .interactive-label, .portfolio-page .home-hover-text > * { transform: none !important; }
   .portfolio-page .interactive-label-gradient { display: none; }
 }

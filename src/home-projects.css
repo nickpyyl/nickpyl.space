@@ -18,6 +18,10 @@
 .portfolio-page .gallery-open:focus-visible { outline-offset: -3px; }
 .gallery-caption { position: absolute; top: calc(100% + 14px); left: var(--page-gutter); width: var(--caption-width, calc(100% - var(--page-gutter) * 2)); opacity: 0; transform: translateY(4px); transition: opacity 180ms ease, transform 220ms cubic-bezier(.22,1,.36,1); pointer-events: none; }
 .portfolio-gallery[data-expanded="true"] .gallery-caption { opacity: 1; transform: none; transition-delay: 80ms; }
+.portfolio-gallery[data-closing="true"] .gallery-caption {
+  transform: translateX(-6px);
+  transition: opacity 80ms ease-out, transform 80ms ease-out;
+}
 .gallery-media-status { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: var(--home-text); font-size: 13px; white-space: nowrap; pointer-events: none; }
 a.gallery-media-status { z-index: 1; pointer-events: auto; text-decoration: underline; }
 .gallery-edge { position: absolute; z-index: 1; inset: -8px 0 -8px auto; width: 62%; pointer-events: none; background: linear-gradient(to right, oklch(from var(--home-page) l c h / 0) 0%, oklch(from var(--home-page) l c h / .08) 25%, oklch(from var(--home-page) l c h / .58) 65%, var(--home-page) 100%); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); -webkit-mask-image: linear-gradient(to right, transparent, oklch(0 0 0) 48%); mask-image: linear-gradient(to right, transparent, oklch(0 0 0) 48%); }

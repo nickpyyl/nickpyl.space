@@ -51,9 +51,10 @@ function LetterboxdLink() {
   function followPointer(event) {
     if (event.pointerType !== "mouse") return;
     const surface = preview.current.contains(event.target) ? preview.current : event.currentTarget;
-    const { left, width } = surface.getBoundingClientRect();
-    const fraction = Math.max(0, Math.min(1, (event.clientX - left) / width));
-    preview.current.style.setProperty("--preview-x", `${(fraction - .5) * 14}px`);
+    const { left, top, width, height } = surface.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (event.clientX - left) / width));
+    const y = Math.max(0, Math.min(1, (event.clientY - top) / height));
+    preview.current.style.setProperty("--preview-offset", `${(x - .5) * 10}px, ${(y - .5) * 4}px`);
   }
 
   useEffect(() => {
@@ -74,7 +75,7 @@ function LetterboxdLink() {
     }}
     onPointerMove={followPointer}
     onPointerLeave={event => {
-      preview.current.style.removeProperty("--preview-x");
+      preview.current.style.removeProperty("--preview-offset");
       if (!event.currentTarget.matches(":focus-visible")) setOpen(false);
     }}
     onFocus={event => { if (event.currentTarget.matches(":focus-visible")) setOpen(true); }}

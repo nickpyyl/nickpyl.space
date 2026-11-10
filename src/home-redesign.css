@@ -191,7 +191,7 @@ button { font: inherit; }
   .portfolio-page .home-hover-text > [data-hover-side="after"] { transform: translateX(var(--hover-room, 1px)); }
 }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  .letterboxd-film { transform: translateX(var(--preview-x, 0px)); transition: transform 180ms cubic-bezier(.22,1,.36,1); }
+  .letterboxd-film { transform: translate(var(--preview-offset, 0px, 0px)); transition: transform 180ms cubic-bezier(.22,1,.36,1); }
 }
 .portfolio-page :is(a, button:not(:disabled)):active .interactive-label { transform: scale(.96); transition-duration: 90ms; }
 @keyframes nav-gradient-sweep { from { background-position: 100% 0; } to { background-position: 0 0; } }

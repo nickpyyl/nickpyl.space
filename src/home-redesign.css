@@ -223,7 +223,7 @@ button { font: inherit; }
     min-height: 100dvh;
   }
   .portfolio-page[data-view="about"] { display: grid; }
-  .portfolio-top { grid-row: 1; padding-block: max(10px, env(safe-area-inset-top)) 10px; }
+  .portfolio-top { grid-row: 1; padding-block: 10px; }
   .portfolio-navigation { width: 100%; justify-content: space-between; gap: 12px; }
   .portfolio-navigation, .portfolio-bio, .portfolio-socials { padding-inline: 8px; }
   .portfolio-identity a { color: var(--home-text); }

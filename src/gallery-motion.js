@@ -15,9 +15,10 @@ export function createLoopingTrack(track, { width, initialOffset = 0, reducedMot
     : position;
 
   function pause() {
+    if (!animation) return;
     clearTimeout(wrapTimer);
     position = getPosition();
-    animation?.cancel();
+    animation.cancel();
     animation = undefined;
     track.style.transform = transform(position);
   }

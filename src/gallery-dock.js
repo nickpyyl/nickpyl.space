@@ -91,7 +91,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
   }
 
   function move(event) {
-    if (gallery.dataset.dragging === 'true' || gallery.dataset.closing === 'true' || simple || selected !== null || reducedMotion || event.pointerType !== 'mouse' || !hover.matches) return;
+    if (gallery.dataset.scrolling || gallery.dataset.dragging === 'true' || gallery.dataset.closing === 'true' || simple || selected !== null || reducedMotion || event.pointerType !== 'mouse' || !hover.matches) return;
     point = { x: event.clientX, y: event.clientY };
     schedule();
   }
@@ -114,7 +114,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
   }
 
   function leave() {
-    if (selected === null) reset();
+    if (selected === null && point) reset();
   }
 
   function finishClosing() {
@@ -128,7 +128,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
   }
 
   function clear() {
-    if (selected === null) return reset();
+    if (selected === null) return leave();
     const transforms = elements.map(element => new DOMMatrixReadOnly(getComputedStyle(element).transform));
     const element = elements[selected];
     const transform = transforms[selected];

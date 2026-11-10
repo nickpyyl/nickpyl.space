@@ -84,7 +84,7 @@ const projects = {
         type: "video",
         src: explorationMedia05,
         alt: "Exploration interaction video 5",
-        description: "lights out",
+        description: "Lights out",
       },
       {
         type: "video",
@@ -136,7 +136,7 @@ const projects = {
         type: "video",
         src: explorationMedia14,
         alt: "Exploration interaction video 14",
-        description: "board customisation",
+        description: "Board customisation",
         aspectRatio: "1082 / 1080",
       },
       {

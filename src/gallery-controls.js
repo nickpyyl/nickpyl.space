@@ -23,7 +23,7 @@ export function createGalleryMotion(rail, sequence, { reducedMotion, simple = fa
   const paused = new Set();
   let gesture;
   let frame;
-  let timer;
+  let wheelGesture;
   let skipClick = false;
 
   function sync() {
@@ -32,6 +32,7 @@ export function createGalleryMotion(rail, sequence, { reducedMotion, simple = fa
   }
 
   function setPaused(reason, value) {
+    if (value && (reason === 'focus' || reason === 'selected')) stopMomentum();
     if (value) paused.add(reason);
     else paused.delete(reason);
     sync();
@@ -39,7 +40,10 @@ export function createGalleryMotion(rail, sequence, { reducedMotion, simple = fa
 
   function stopMomentum() {
     cancelAnimationFrame(frame);
-    clearTimeout(timer);
+    if (wheelGesture) {
+      wheelGesture = undefined;
+      delete gallery.dataset.scrolling;
+    }
     paused.delete('momentum');
     paused.delete('wheel');
   }
@@ -107,20 +111,45 @@ export function createGalleryMotion(rail, sequence, { reducedMotion, simple = fa
     setPaused('pointer', false);
   }
 
+  function paintWheel(time) {
+    const elapsed = Math.max(0, time - wheelGesture.lastFrame);
+    const remaining = wheelGesture.delta;
+    // WebKit can deliver trackpad deltas in bursts. Keep their full distance
+    // and spread it over display frames, including during native momentum.
+    const step = reducedMotion || Math.abs(remaining) < .25
+      ? remaining : remaining * -Math.expm1(-elapsed / 26);
+    if (step) loop.setPosition(loop.getPosition() + step, true);
+    wheelGesture.delta -= step;
+    wheelGesture.lastFrame = time;
+    if (wheelGesture.delta || time - wheelGesture.lastInput < 100) {
+      frame = requestAnimationFrame(paintWheel);
+    } else {
+      wheelGesture = undefined;
+      delete gallery.dataset.scrolling;
+      setPaused('wheel', false);
+    }
+  }
+
   function wheel(event) {
-    if (event.ctrlKey) return;
+    if (event.ctrlKey || gesture) return;
     const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
     if (!delta) return;
     event.preventDefault();
-    stopMomentum();
-    setPaused('wheel', true);
-    onInteract();
+    const now = performance.now();
+    if (!wheelGesture) {
+      stopMomentum();
+      wheelGesture = { delta: 0, lastFrame: now, lastInput: now, scrollPage: !simple && page.scrollHeight > window.innerHeight };
+      gallery.dataset.scrolling = 'true';
+      setPaused('wheel', true);
+      onInteract();
+      frame = requestAnimationFrame(paintWheel);
+    }
     const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? rail.clientWidth : 1;
-    if (!simple && page.scrollHeight > window.innerHeight && Math.abs(event.deltaY) >= Math.abs(event.deltaX)) {
+    if (wheelGesture.scrollPage && Math.abs(event.deltaY) >= Math.abs(event.deltaX)) {
       window.scrollBy({ top: event.deltaY * unit, behavior: 'instant' });
     }
-    loop.setPosition(loop.getPosition() + delta * unit, true);
-    timer = setTimeout(() => setPaused('wheel', false), 100);
+    wheelGesture.delta += delta * unit;
+    wheelGesture.lastInput = now;
   }
 
   function click(event) {

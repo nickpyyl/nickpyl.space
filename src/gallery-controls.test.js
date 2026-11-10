@@ -15,7 +15,7 @@ function fakeTrack() {
   return { track, animations };
 }
 
-function controls(t, { simple = true } = {}) {
+function controls(t, { simple = true, reducedMotion = true } = {}) {
   const listeners = new Map();
   const pageListeners = new Map();
   const captures = new Set();
@@ -23,7 +23,7 @@ function controls(t, { simple = true } = {}) {
     addEventListener(type, handler) { pageListeners.set(type, handler); },
     removeEventListener(type) { pageListeners.delete(type); },
   };
-  const { track } = fakeTrack();
+  const { track, animations } = fakeTrack();
   const gallery = { dataset: {} };
   const rail = {
     clientWidth: 393, querySelector: () => track,
@@ -35,11 +35,22 @@ function controls(t, { simple = true } = {}) {
     releasePointerCapture(id) { captures.delete(id); },
   };
   const sequence = { offsetHeight: 180, getBoundingClientRect: () => ({ width: 1000 }) };
+  let now = 0;
+  let nextId = 0;
+  const frames = new Map();
+  function tick(ms = 16) {
+    now += ms;
+    const callbacks = [...frames.values()];
+    frames.clear();
+    callbacks.forEach(callback => callback(now));
+  }
   const globals = {
     document: { hidden: false, addEventListener() {}, removeEventListener() {} },
     getComputedStyle: () => ({ paddingLeft: '20px' }),
     ResizeObserver: class { observe() {} disconnect() {} },
-    cancelAnimationFrame() {},
+    performance: { now: () => now },
+    requestAnimationFrame(callback) { frames.set(++nextId, callback); return nextId; },
+    cancelAnimationFrame(id) { frames.delete(id); },
   };
   const restore = [];
   for (const [key, value] of Object.entries(globals)) {
@@ -48,7 +59,7 @@ function controls(t, { simple = true } = {}) {
     restore.push(() => previous ? Object.defineProperty(globalThis, key, previous) : delete globalThis[key]);
   }
   let interactions = 0;
-  const motion = createGalleryMotion(rail, sequence, { reducedMotion: true, simple, onInteract: () => { interactions++; } });
+  const motion = createGalleryMotion(rail, sequence, { reducedMotion, simple, onInteract: () => { interactions++; } });
   t.after(() => {
     motion.destroy();
     restore.forEach(reset => reset());
@@ -56,7 +67,7 @@ function controls(t, { simple = true } = {}) {
   const pointer = (type, x, y, time, id = 1) => listeners.get(type)({
     type, pointerId: id, clientX: x, clientY: y, timeStamp: time, button: 0, target: rail,
   });
-  return { motion, listeners, pageListeners, captures, gallery, pointer, interactions: () => interactions };
+  return { motion, listeners, pageListeners, captures, gallery, pointer, tick, frames, animations, interactions: () => interactions };
 }
 
 test('vertical and horizontal gallery gestures move the line and suppress accidental taps', t => {
@@ -76,9 +87,10 @@ test('vertical and horizontal gallery gestures move the line and suppress accide
 });
 
 test('downward wheel input moves horizontally while pinch gestures release capture', t => {
-  const { motion, listeners, pointer, gallery, captures } = controls(t);
+  const { motion, listeners, pointer, gallery, captures, tick } = controls(t);
   let prevented = false;
   listeners.get('wheel')({ deltaX: 0, deltaY: 120, deltaMode: 0, preventDefault() { prevented = true; } });
+  tick();
   assert.equal(motion.getPosition(), 1120);
   assert.equal(prevented, true);
   listeners.get('wheel')({ ctrlKey: true, deltaY: 120, preventDefault() { assert.fail('pinch zoom must remain available'); } });
@@ -128,12 +140,46 @@ test('transferring implicit touch capture from a card to the rail does not cance
 });
 
 test('desktop wheel browsing covers the page without moving native scroll offsets', t => {
-  const { motion, listeners, pageListeners } = controls(t, { simple: false });
+  const { motion, listeners, pageListeners, tick } = controls(t, { simple: false });
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'window');
   Object.defineProperty(globalThis, 'window', { value: { innerHeight: 900 }, configurable: true });
   t.after(() => previous ? Object.defineProperty(globalThis, 'window', previous) : delete globalThis.window);
   assert.equal(listeners.has('wheel'), false);
   pageListeners.get('wheel')({ deltaX: 0, deltaY: 120, deltaMode: 0, preventDefault() {} });
+  tick();
   assert.equal(motion.getPosition(), 1120);
   for (const type of ['pointerdown', 'pointermove', 'pointerup']) assert.equal(pageListeners.has(type), false);
+});
+
+test('bursty wheel input moves on consecutive frames, wraps, and hands the exact distance back to autoplay', t => {
+  const { motion, listeners, tick, frames, animations, interactions, gallery } = controls(t, { reducedMotion: false });
+  const start = motion.getPosition();
+  const wheel = distance => listeners.get('wheel')({ deltaY: distance, deltaX: 0, deltaMode: 0, preventDefault() {} });
+  wheel(70);
+  wheel(50);
+  assert.equal(motion.getPosition(), start);
+  assert.equal(frames.size, 1);
+  tick();
+  const first = motion.getPosition();
+  assert.ok(first > start && first < start + 120);
+  tick();
+  assert.ok(motion.getPosition() > first);
+  wheel(-300);
+  assert.equal(interactions(), 1);
+  for (let i = 0; i < 20; i++) tick();
+  assert.ok(Math.abs(motion.getPosition() - (start - 180 + 1000)) < .0001);
+  assert.equal(frames.size, 0);
+  assert.equal(gallery.dataset.scrolling, undefined);
+  assert.equal(animations.length, 2);
+});
+
+test('grabbing a card during wheel motion cancels the pending scroll frames', t => {
+  const { motion, listeners, tick, frames, pointer } = controls(t, { reducedMotion: false });
+  listeners.get('wheel')({ deltaX: 200, deltaY: 0, deltaMode: 0, preventDefault() {} });
+  tick();
+  pointer('pointerdown', 200, 400, 16);
+  const grabbed = motion.getPosition();
+  tick(250);
+  assert.equal(motion.getPosition(), grabbed);
+  assert.equal(frames.size, 0);
 });

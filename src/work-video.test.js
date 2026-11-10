@@ -11,6 +11,7 @@ function setup(t, { priority = false, poster, observerSupport = true, mobile = f
     play() { this.paused = false; return Promise.resolve(); },
     pause() { this.paused = true; },
     hasAttribute(name) { return Boolean(this[name]); },
+    removeAttribute(name) { delete this[name]; },
     closest(selector) {
       if (selector === ".portfolio-gallery") return gallery;
       return (selector === ".media-viewer" && this.inViewer) || (selector === "[inert]" && this.inert) ? {} : null;
@@ -136,8 +137,9 @@ test("mobile pauses the narrow edge of the next gallery video", t => {
   assert.equal(video.paused, true);
 });
 
-test("fast browsing shows a poster without starting a decoder, then resumes visible previews", t => {
+test("desktop galleries with scroll posters defer playback during fast browsing", t => {
   const { gallery, video, observers } = setup(t, { poster: "preview.webp" });
+  gallery.dataset.scrollPosters = "true";
   gallery.dataset.browsing = "true";
   observers[1].intersect(true);
   observers[0].intersect(true);
@@ -154,4 +156,39 @@ test("fast browsing shows a poster without starting a decoder, then resumes visi
   delete gallery.dataset.browsing;
   refreshVideoPlayback();
   assert.equal(video.paused, true);
+});
+
+test("plain previews load the video directly and keep playing across a scroll", t => {
+  const { gallery, video, observers } = setup(t, { poster: "preview.webp", mobile: true });
+  gallery.dataset.browsing = "true";
+  observers[1].intersect(true);
+  assert.equal(video.hasAttribute("poster"), false);
+  assert.equal(video.src, "blob:cached");
+  assert.equal(video.paused, true);
+
+  observers[0].intersect(true);
+  assert.equal(video.paused, false);
+  delete gallery.dataset.browsing;
+  refreshVideoPlayback();
+  gallery.dataset.browsing = "true";
+  refreshVideoPlayback();
+  assert.equal(video.paused, false);
+  assert.equal(video.hasAttribute("poster"), false);
+  observers[0].intersect(false);
+  assert.equal(video.paused, true);
+});
+
+test("switching to the plain mobile placeholder clears an existing desktop poster without replacing the clip", t => {
+  const { gallery, video, observers, setSource } = setup(t, { poster: "preview.webp" });
+  gallery.dataset.scrollPosters = "true";
+  observers[0].intersect(true);
+  assert.equal(video.poster, "preview.webp");
+  video.currentTime = 2;
+  setSource("blob:new");
+  delete gallery.dataset.scrollPosters;
+  refreshVideoPlayback();
+  assert.equal(video.hasAttribute("poster"), false);
+  assert.equal(video.src, "blob:cached");
+  assert.equal(video.currentTime, 2);
+  assert.equal(video.paused, false);
 });

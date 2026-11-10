@@ -3,6 +3,7 @@ import { HoverText } from "./HoverText.jsx";
 import InteractiveLabel from "./InteractiveLabel.jsx";
 import { EmailContact, SocialLinks } from "./PortfolioContact.jsx";
 import HomeProjects from "./HomeProjects.jsx";
+import { needsSafariPreviewSnapshot } from "./safari-preview-snapshot.js";
 import AboutPhotos from "./AboutPhotos.jsx";
 import { createPageTransition, pageTransitionTiming } from "./page-transition.js";
 import avatar from "../assets/avatar-nick-96.jpg";
@@ -108,7 +109,7 @@ export default function HomeRedesign({ projects }) {
     </header>
 
     <section className="portfolio-work" data-active={activeView !== "about"} aria-hidden={activeView === "about"} aria-label="Selected projects">
-      <HomeProjects projects={projects} activeProject={activeView} preparedProject={selectedView} reducedMotion={reducedMotion} simple={simpleGallery} />
+      <HomeProjects projects={projects} activeProject={activeView} preparedProject={selectedView} reducedMotion={reducedMotion} simple={simpleGallery} scrollPosters={!mobileLayout && !needsSafariPreviewSnapshot()} />
     </section>
 
     <AboutPhotos active={activeView === "about"} prepared={aboutPrepared || selectedView === "about"} mobileLayout={mobileLayout} />

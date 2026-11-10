@@ -31,7 +31,7 @@ function GalleryMedia({ item, active, reducedMotion, duplicate, expanded, onTogg
   </figure>;
 }
 
-function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
+function Gallery({ id, items, active, prepared, reducedMotion, simple, scrollPosters }) {
   const railRef = useRef(null);
   const sequenceRef = useRef(null);
   const dock = useRef(null);
@@ -41,7 +41,7 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
   const [caption, setCaption] = useState("");
   const [visited, setVisited] = useState(active || prepared);
   useEffect(() => { if (active || prepared) setVisited(true); }, [active, prepared]);
-  useEffect(() => { refreshVideoPlayback(); }, [active, reducedMotion]);
+  useEffect(() => { refreshVideoPlayback(); }, [active, reducedMotion, scrollPosters]);
 
   useLayoutEffect(() => {
     if (!active) return;
@@ -91,7 +91,7 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
     motionRef.current.setPosition(cards[next].offsetLeft + cycle);
   }
 
-  return <div id={`gallery-${id}`} className="portfolio-gallery" role="tabpanel" aria-labelledby={`tab-${id}`} data-active={active} data-simple={simple} data-expanded={selected !== null} inert={!active} aria-hidden={!active}>
+  return <div id={`gallery-${id}`} className="portfolio-gallery" role="tabpanel" aria-labelledby={`tab-${id}`} data-active={active} data-simple={simple} data-scroll-posters={scrollPosters || undefined} data-expanded={selected !== null} inert={!active} aria-hidden={!active}>
     <div className="gallery-viewport">
       <div ref={railRef} className="gallery-rail work-rail" tabIndex={active ? 0 : -1} aria-label={`${id === "fuse" ? "Fuse" : "Explorations"} gallery. Scroll or drag to browse.`}
         onKeyDown={moveWithKeys}
@@ -117,8 +117,8 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
   </div>;
 }
 
-export default function HomeProjects({ projects, activeProject, preparedProject, reducedMotion, simple }) {
+export default function HomeProjects({ projects, activeProject, preparedProject, reducedMotion, simple, scrollPosters }) {
   return <div className="portfolio-galleries">
-    {Object.entries(projects).map(([id, items]) => <Gallery key={id} id={id} items={items} active={activeProject === id} prepared={preparedProject === id} reducedMotion={reducedMotion} simple={simple} />)}
+    {Object.entries(projects).map(([id, items]) => <Gallery key={id} id={id} items={items} active={activeProject === id} prepared={preparedProject === id} reducedMotion={reducedMotion} simple={simple} scrollPosters={scrollPosters} />)}
   </div>;
 }

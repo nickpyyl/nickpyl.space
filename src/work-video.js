@@ -26,10 +26,14 @@ export function observeWorkVideo(video, src, { priority = false, poster, sourceF
   }
 
   function syncPlayback() {
-    if (poster && (visible || nearby) && !video.hasAttribute("poster")) video.poster = poster;
-    if (poster && gallery?.dataset.browsing === "true" && !video.controls) {
-      if (!video.paused) video.pause();
-      return;
+    if (poster && gallery?.dataset.scrollPosters === "true") {
+      if ((visible || nearby) && !video.hasAttribute("poster")) video.poster = poster;
+      if (gallery.dataset.browsing === "true" && !video.controls) {
+        if (!video.paused) video.pause();
+        return;
+      }
+    } else if (poster && video.hasAttribute("poster")) {
+      video.removeAttribute("poster");
     }
     if (nearby && !document.hidden && !video.closest("[inert]")) load();
     if (video.dataset?.previewBuffering !== "true" && !document.hidden && !video.closest("[inert]") && (visible || video.closest(".media-viewer"))) {

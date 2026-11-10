@@ -146,14 +146,16 @@ button { font: inherit; }
 .portfolio-bio[data-memo="true"] { max-width: 40ch; }
 .portfolio-socials { white-space: nowrap; }
 .letterboxd-link { position: relative; }
+.letterboxd-link::before { content: ""; position: absolute; inset: -8px -6px; }
+@media (pointer: coarse) {
+  .letterboxd-link::before { inset-block: -12px; }
+}
 .letterboxd-preview {
   position: absolute;
   z-index: 1;
   right: 0;
   bottom: 100%;
   width: clamp(100px, calc((50svh - var(--media-height) / 2 - var(--page-gutter) - 82px) * .8), 168px);
-  display: grid;
-  gap: 8px;
   padding-bottom: 12px;
   opacity: 0;
   visibility: hidden;
@@ -161,7 +163,9 @@ button { font: inherit; }
   transition: opacity 160ms ease-out, transform 180ms cubic-bezier(.22,1,.36,1), visibility 0s 180ms;
 }
 .letterboxd-preview[data-open="true"] { visibility: visible; opacity: 1; transform: none; transition-delay: 0s; }
+.letterboxd-film { display: grid; gap: 8px; pointer-events: none; }
 .letterboxd-rating { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 12px; line-height: 1.2; color: oklch(0.554 0 0); }
+.letterboxd-rating svg { transform: translateY(-1px); }
 .letterboxd-preview img { display: block; width: 100%; height: auto; border-radius: 4px; box-shadow: 0 8px 22px oklch(0 0 0 / .18); }
 .portfolio-page .interactive-label { position: relative; display: inline-block; transform-origin: center; transition: transform 180ms cubic-bezier(.22,1,.36,1); }
 .portfolio-page .home-hover-text > * { position: relative; display: inline-block; transition: transform 180ms cubic-bezier(.22,1,.36,1); }
@@ -187,7 +191,7 @@ button { font: inherit; }
   .portfolio-page .home-hover-text > [data-hover-side="after"] { transform: translateX(var(--hover-room, 1px)); }
 }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  .letterboxd-preview[data-open="true"] { transform: translateX(var(--preview-x, 0px)); }
+  .letterboxd-film { transform: translateX(var(--preview-x, 0px)); transition: transform 180ms cubic-bezier(.22,1,.36,1); }
 }
 .portfolio-page :is(a, button:not(:disabled)):active .interactive-label { transform: scale(.96); transition-duration: 90ms; }
 @keyframes nav-gradient-sweep { from { background-position: 100% 0; } to { background-position: 0 0; } }

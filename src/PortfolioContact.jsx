@@ -49,10 +49,11 @@ function LetterboxdLink() {
   const preview = useRef(null);
 
   function followPointer(event) {
-    if (event.pointerType !== "mouse" || preview.current.contains(event.target)) return;
-    const { left, width } = event.currentTarget.getBoundingClientRect();
+    if (event.pointerType !== "mouse") return;
+    const surface = preview.current.contains(event.target) ? preview.current : event.currentTarget;
+    const { left, width } = surface.getBoundingClientRect();
     const fraction = Math.max(0, Math.min(1, (event.clientX - left) / width));
-    preview.current.style.setProperty("--preview-x", `${(fraction - .5) * 10}px`);
+    preview.current.style.setProperty("--preview-x", `${(fraction - .5) * 14}px`);
   }
 
   useEffect(() => {
@@ -80,16 +81,18 @@ function LetterboxdLink() {
     onBlur={() => setOpen(false)}>
     <InteractiveLabel>letterboxd</InteractiveLabel>
     <span ref={preview} className="letterboxd-preview" id="recent-film" role="tooltip" data-open={open} aria-hidden={!open}>
-      <span className="letterboxd-rating" aria-hidden="true">
-        Recent
-        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" focusable="false">
-          <path d="M8 1.8l1.9 3.85 4.25.62-3.08 3 .73 4.24L8 11.5l-3.8 2.01.73-4.24-3.08-3 4.25-.62Z"
-            stroke="currentColor" strokeWidth="0.65" strokeLinejoin="round" />
-        </svg>
-        4,5
+      <span className="letterboxd-film">
+        <span className="letterboxd-rating" aria-hidden="true">
+          Recent
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" focusable="false">
+            <path d="M8 1.8l1.9 3.85 4.25.62-3.08 3 .73 4.24L8 11.5l-3.8 2.01.73-4.24-3.08-3 4.25-.62Z"
+              stroke="currentColor" strokeWidth="0.65" strokeLinejoin="round" />
+          </svg>
+          4,5
+        </span>
+        <span className="visually-hidden">Recent film, Primetime. Rated 4.5 out of 5.</span>
+        <img src={poster} width="336" height="420" alt="" draggable="false" decoding="async" loading="lazy" />
       </span>
-      <span className="visually-hidden">Recent film, Primetime. Rated 4.5 out of 5.</span>
-      <img src={poster} width="336" height="420" alt="" draggable="false" decoding="async" loading="lazy" />
     </span>
   </a>;
 }

@@ -31,7 +31,6 @@ a.gallery-media-status { z-index: 1; pointer-events: auto; text-decoration: unde
 .portfolio-gallery[data-simple="true"] .gallery-viewport::after { right: 0; width: max(var(--gesture-edge, 32px), env(safe-area-inset-right)); }
 .portfolio-gallery[data-dragging="true"] .gallery-piece { transition: none; }
 .portfolio-gallery[data-simple="true"] .gallery-edge { display: none; }
-.portfolio-gallery[data-browsing="true"] .gallery-edge { -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (max-width: 700px) {
   .gallery-caption { font-size: 14px; }
   .gallery-viewport { --gesture-edge: 48px; }

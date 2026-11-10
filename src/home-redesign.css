@@ -212,6 +212,7 @@ button { font: inherit; }
 @media (max-width: 700px) {
   .portfolio-page {
     --page-gutter: max(20px, env(safe-area-inset-left), env(safe-area-inset-right));
+    --content-inset: 8px;
     --media-height: min(46vw, 26svh, 180px);
     --home-text: #646464;
     --home-strong: #000;
@@ -223,9 +224,9 @@ button { font: inherit; }
     min-height: 100dvh;
   }
   .portfolio-page[data-view="about"] { display: grid; }
-  .portfolio-top { grid-row: 1; padding-block: 10px; }
+  .portfolio-top { grid-row: 1; padding: 10px calc(var(--page-gutter) + var(--content-inset)); }
   .portfolio-navigation { width: 100%; justify-content: space-between; gap: 12px; }
-  .portfolio-navigation, .portfolio-bio, .portfolio-socials { padding-inline: 8px; }
+  .portfolio-bio, .portfolio-socials { padding-inline: var(--content-inset); }
   .portfolio-identity a { color: var(--home-text); }
   .portfolio-identity img { width: 20px; height: 20px; }
   .portfolio-identity a, .portfolio-tabs button { min-height: 44px; }

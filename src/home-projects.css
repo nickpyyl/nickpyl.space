@@ -36,7 +36,7 @@ a.gallery-media-status { z-index: 1; pointer-events: auto; text-decoration: unde
 .portfolio-gallery[data-dragging="true"] .gallery-piece { transition: none; }
 .portfolio-gallery[data-simple="true"] .gallery-edge { display: none; }
 @media (max-width: 700px) {
-  .gallery-caption { font-size: 14px; }
+  .gallery-caption { left: calc(var(--page-gutter) + var(--content-inset)); font-size: 14px; }
   .gallery-viewport { --gesture-edge: 48px; }
   /* The rail's padding makes room for expanded cards; it isn't a swipe target. */
   .portfolio-gallery[data-simple="true"] .gallery-rail { pointer-events: none; touch-action: pan-y pinch-zoom; }

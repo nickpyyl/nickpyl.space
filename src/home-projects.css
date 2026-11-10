@@ -33,6 +33,7 @@ a.gallery-media-status { z-index: 1; pointer-events: auto; text-decoration: unde
 .portfolio-gallery[data-simple="true"] .gallery-edge { display: none; }
 @media (max-width: 700px) {
   .gallery-caption { font-size: 14px; }
+  .portfolio-gallery[data-simple="true"] .gallery-rail { touch-action: pan-y pinch-zoom; }
 }
 @media (prefers-reduced-motion: reduce) {
   .gallery-piece, .gallery-caption { transition: none; }

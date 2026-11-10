@@ -16,22 +16,28 @@ const navigationItems = [
 ];
 const availableTabs = navigationItems.filter(item => !item.disabled).map(item => item.id);
 
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const update = () => setMatches(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [query]);
+  return matches;
+}
+
 export default function HomeRedesign({ projects }) {
   const [navigation, setNavigation] = useState({ view: "explorations", target: "explorations", phase: "idle" });
   const { view: activeView, target: selectedView, phase } = navigation;
   const [inputMode, setInputMode] = useState("pointer");
   const [aboutPrepared, setAboutPrepared] = useState(false);
-  const [simpleGallery, setSimpleGallery] = useState(() => window.matchMedia("(max-width: 700px), (pointer: coarse)").matches);
-  const [reducedMotion, setReducedMotion] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const mobileLayout = useMediaQuery("(max-width: 700px)");
+  const simpleGallery = useMediaQuery("(max-width: 700px), (pointer: coarse)");
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const tabs = useRef({});
   const transition = useRef(null);
-
-  useEffect(() => {
-    const preference = window.matchMedia("(max-width: 700px), (pointer: coarse)");
-    const update = () => setSimpleGallery(preference.matches);
-    preference.addEventListener("change", update);
-    return () => preference.removeEventListener("change", update);
-  }, []);
 
   useEffect(() => {
     transition.current = createPageTransition("explorations", setNavigation);
@@ -43,13 +49,6 @@ export default function HomeRedesign({ projects }) {
   }, [reducedMotion]);
 
   useEffect(() => { if (reducedMotion) transition.current.finish(); }, [reducedMotion]);
-
-  useEffect(() => {
-    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReducedMotion(preference.matches);
-    preference.addEventListener("change", update);
-    return () => preference.removeEventListener("change", update);
-  }, []);
 
   useEffect(() => {
     function shortcut(event) {
@@ -105,14 +104,14 @@ export default function HomeRedesign({ projects }) {
             </button>)}
         </div>
       </nav>
-      <EmailContact />
+      {!mobileLayout && <EmailContact />}
     </header>
 
     <section className="portfolio-work" data-active={activeView !== "about"} aria-hidden={activeView === "about"} aria-label="Selected projects">
       <HomeProjects projects={projects} activeProject={activeView} preparedProject={selectedView} reducedMotion={reducedMotion} simple={simpleGallery} />
     </section>
 
-    <AboutPhotos active={activeView === "about"} prepared={aboutPrepared || selectedView === "about"} />
+    <AboutPhotos active={activeView === "about"} prepared={aboutPrepared || selectedView === "about"} mobileLayout={mobileLayout} />
 
     <footer className="portfolio-bottom">
       <div className="portfolio-bio" aria-label={activeView === "about" ? "Memo" : "About Nick Pyl"}
@@ -129,6 +128,7 @@ export default function HomeRedesign({ projects }) {
         </>}
       </div>
       <SocialLinks />
+      {mobileLayout && <EmailContact />}
     </footer>
   </main>;
 }

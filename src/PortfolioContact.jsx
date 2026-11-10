@@ -33,10 +33,10 @@ export function EmailContact() {
       <span className="email-action" aria-hidden="true">
         <span className="email-copy"><InteractiveLabel>{status === "manual" ? "copy manually" : "copy"}</InteractiveLabel></span>
         <span className="email-copied">
+          copied
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" focusable="false">
             <path d="m3 8 3.2 3.2L13 4.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          copied
         </span>
       </span>
     </button>

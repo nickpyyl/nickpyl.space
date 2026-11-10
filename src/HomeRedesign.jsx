@@ -117,10 +117,9 @@ export default function HomeRedesign({ projects }) {
     <footer className="portfolio-bottom">
       <div className="portfolio-bio" aria-label={activeView === "about" ? "Memo" : "About Nick Pyl"}
         data-memo={activeView === "about"} data-changing={(activeView === "about") !== (selectedView === "about")}>
-        {activeView === "about" ? <>
+        {activeView === "about" ?
           <p>I found my way into interface design through photography 8 years ago. It taught me to care about composition, rhythm, light, and the small details that shape how something feels.</p>
-          <p>I still take photos whenever I can.</p>
-        </> : <>
+        : <>
           <HoverText>Currently product design lead at <a href="https://phantom.com/" target="_blank" rel="noreferrer"><InteractiveLabel>Phantom</InteractiveLabel></a></HoverText>
           <HoverText>Previously multidisciplinary designer at <a href="#fuse" onClick={event => {
             event.preventDefault();

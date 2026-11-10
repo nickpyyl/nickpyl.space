@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { aboutPhotoAssets } from "./about-photo-assets.js";
 
 const photos = [
-  { id: "parkedCar", alt: "A car parked beside a leafy residential street" },
-  { id: "passenger", alt: "A passenger in a red cap looking out over green hills" },
-  { id: "hillside", alt: "Wildflowers and rocks scattered across a green hillside" },
-  { id: "boat", alt: "A moored sailboat with a blue Charisma sail cover" },
   { id: "shore", alt: "A tidal shoreline with mountains in the distance" },
+  { id: "blueCar", alt: "Green hills seen through the open window of a blue car" },
+  { id: "field", alt: "A silver car parked in a grassy field beneath a cloudy sky" },
+  { id: "cafe", alt: "Sunlight falling across the tables of a café with red and yellow walls" },
+  { id: "landscape", alt: "A path through mossy rocks and grass with mountains beyond" },
 ];
 
 export default function AboutPhotos({ active, prepared }) {

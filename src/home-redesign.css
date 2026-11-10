@@ -216,7 +216,7 @@ button { font: inherit; }
     --home-text: #646464;
     --home-strong: #000;
     color: var(--home-text);
-    font: 400 16px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    font: 400 .9375rem/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(calc(var(--media-height) + 72px), 1fr) auto;
@@ -225,11 +225,13 @@ button { font: inherit; }
   .portfolio-page[data-view="about"] { display: grid; }
   .portfolio-top { grid-row: 1; padding-block: max(10px, env(safe-area-inset-top)) 10px; }
   .portfolio-navigation { width: 100%; justify-content: space-between; gap: 12px; }
+  .portfolio-navigation, .portfolio-bio, .portfolio-socials { padding-inline: 8px; }
   .portfolio-identity a { color: var(--home-text); }
   .portfolio-identity img { width: 20px; height: 20px; }
   .portfolio-identity a, .portfolio-tabs button { min-height: 44px; }
   .portfolio-tabs { gap: 10px; }
   .portfolio-tabs button { min-width: 44px; text-align: center; }
+  .portfolio-tabs button:last-child { text-align: end; }
   .portfolio-tabs button:disabled { display: none; }
   .portfolio-work {
     grid-row: 2;
@@ -257,7 +259,6 @@ button { font: inherit; }
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
-    line-height: 24px;
     padding-top: 20px;
     padding-bottom: max(34px, env(safe-area-inset-bottom));
   }
@@ -275,7 +276,7 @@ button { font: inherit; }
 }
 @media (max-width: 360px) {
   .portfolio-page { --page-gutter: max(16px, env(safe-area-inset-left), env(safe-area-inset-right)); }
-  .portfolio-navigation { gap: 8px; }
+  .portfolio-navigation { gap: 4px; }
   .portfolio-identity { gap: 6px; }
   .portfolio-identity img { width: 18px; height: 18px; }
   .portfolio-tabs { gap: 4px; }

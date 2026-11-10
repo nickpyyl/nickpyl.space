@@ -150,7 +150,7 @@ export function createGalleryDock(rail, { reducedMotion = false, simple = false,
     if (!reducedMotion && page.dataset.input !== 'keyboard') {
       gallery.dataset.closing = 'true';
       closingElement = element;
-      closingTimer = setTimeout(finishClosing, 230);
+      closingTimer = setTimeout(finishClosing, 280);
     }
     // Preserve the visible pose while committing the row's new scroll position.
     element.getBoundingClientRect();

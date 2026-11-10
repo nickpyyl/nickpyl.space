@@ -47,15 +47,32 @@ export function EmailContact() {
 function LetterboxdLink() {
   const [open, setOpen] = useState(false);
   const preview = useRef(null);
+  const film = useRef(null);
+  const pointer = useRef(null);
+  const frame = useRef(0);
 
   function followPointer(event) {
     if (event.pointerType !== "mouse") return;
     const surface = preview.current.contains(event.target) ? preview.current : event.currentTarget;
-    const { left, top, width, height } = surface.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (event.clientX - left) / width));
-    const y = Math.max(0, Math.min(1, (event.clientY - top) / height));
-    preview.current.style.setProperty("--preview-offset", `${(x - .5) * 10}px, ${(y - .5) * 4}px`);
+    pointer.current = { surface, x: event.clientX, y: event.clientY };
+    if (frame.current) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0;
+      const point = pointer.current;
+      const { left, top, width, height } = point.surface.getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (point.x - left) / width));
+      const y = Math.max(0, Math.min(1, (point.y - top) / height));
+      film.current.style.transform = `translate3d(${(x - .5) * 10}px, ${(y - .5) * 4}px, 0)`;
+    });
   }
+
+  function resetGlide() {
+    cancelAnimationFrame(frame.current);
+    frame.current = 0;
+    film.current?.style.removeProperty("transform");
+  }
+
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
 
   useEffect(() => {
     if (!open) return;
@@ -75,14 +92,14 @@ function LetterboxdLink() {
     }}
     onPointerMove={followPointer}
     onPointerLeave={event => {
-      preview.current.style.removeProperty("--preview-offset");
+      resetGlide();
       if (!event.currentTarget.matches(":focus-visible")) setOpen(false);
     }}
     onFocus={event => { if (event.currentTarget.matches(":focus-visible")) setOpen(true); }}
     onBlur={() => setOpen(false)}>
     <InteractiveLabel>letterboxd</InteractiveLabel>
     <span ref={preview} className="letterboxd-preview" id="recent-film" role="tooltip" data-open={open} aria-hidden={!open}>
-      <span className="letterboxd-film">
+      <span ref={film} className="letterboxd-film">
         <span className="letterboxd-rating" aria-hidden="true">
           Recent
           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" focusable="false">

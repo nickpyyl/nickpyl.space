@@ -2,14 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { observeWorkVideo, refreshVideoPlayback } from "./work-video.js";
 
-function setup(t, { priority = false, observerSupport = true, mobile = false } = {}) {
+function setup(t, { priority = false, poster, observerSupport = true, mobile = false } = {}) {
   const observers = [];
+  const gallery = { dataset: {} };
   const document = Object.assign(new EventTarget(), { hidden: false });
   const video = Object.assign(new EventTarget(), {
     paused: true, src: "", preload: "none", inViewer: false, inert: false,
     play() { this.paused = false; return Promise.resolve(); },
     pause() { this.paused = true; },
+    hasAttribute(name) { return Boolean(this[name]); },
     closest(selector) {
+      if (selector === ".portfolio-gallery") return gallery;
       return (selector === ".media-viewer" && this.inViewer) || (selector === "[inert]" && this.inert) ? {} : null;
     },
   });
@@ -33,8 +36,8 @@ function setup(t, { priority = false, observerSupport = true, mobile = false } =
     }
   });
   let source = "blob:cached";
-  dispose = observeWorkVideo(video, "video.mp4", { priority, sourceFor: () => source });
-  return { video, document, observers, dispose, setSource: next => { source = next; } };
+  dispose = observeWorkVideo(video, "video.mp4", { priority, poster, sourceFor: () => source });
+  return { video, document, observers, dispose, gallery, setSource: next => { source = next; } };
 }
 
 test("nearby videos prepare cached bytes but only visible videos play", t => {
@@ -130,5 +133,25 @@ test("mobile pauses the narrow edge of the next gallery video", t => {
   observers[0].intersect(true, 0.4);
   assert.equal(video.paused, false);
   observers[0].intersect(true, 0.1);
+  assert.equal(video.paused, true);
+});
+
+test("fast browsing shows a poster without starting a decoder, then resumes visible previews", t => {
+  const { gallery, video, observers } = setup(t, { poster: "preview.webp" });
+  gallery.dataset.browsing = "true";
+  observers[1].intersect(true);
+  observers[0].intersect(true);
+  assert.equal(video.poster, "preview.webp");
+  assert.equal(video.src, "");
+  assert.equal(video.paused, true);
+  delete gallery.dataset.browsing;
+  refreshVideoPlayback();
+  assert.equal(video.paused, false);
+  gallery.dataset.browsing = "true";
+  refreshVideoPlayback();
+  assert.equal(video.paused, true);
+  observers[0].intersect(false);
+  delete gallery.dataset.browsing;
+  refreshVideoPlayback();
   assert.equal(video.paused, true);
 });

@@ -1,6 +1,6 @@
 import { createLoopingTrack } from "./gallery-motion.js";
 
-export function createGalleryMotion(rail, sequence, { reducedMotion, simple = false, progress, onInteract }) {
+export function createGalleryMotion(rail, sequence, { reducedMotion, simple = false, progress, onInteract, onBrowseChange }) {
   const track = rail.querySelector('.gallery-track');
   const gallery = rail.closest('.portfolio-gallery');
   const page = rail.closest('.portfolio-page');
@@ -27,6 +27,12 @@ export function createGalleryMotion(rail, sequence, { reducedMotion, simple = fa
   let skipClick = false;
 
   function sync() {
+    const browsing = paused.has('wheel') || paused.has('momentum') || Boolean(gesture?.axis);
+    if (browsing !== (gallery.dataset.browsing === 'true')) {
+      if (browsing) gallery.dataset.browsing = 'true';
+      else delete gallery.dataset.browsing;
+      onBrowseChange?.();
+    }
     if (paused.size || document.hidden) loop.pause();
     else loop.resume();
   }
@@ -74,6 +80,7 @@ export function createGalleryMotion(rail, sequence, { reducedMotion, simple = fa
       if (Math.hypot(dx, dy) < 6) return;
       gesture.axis = !simple || Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
       gallery.dataset.dragging = 'true';
+      sync();
       onInteract();
       rail.setPointerCapture(event.pointerId);
     }
@@ -199,6 +206,7 @@ export function createGalleryMotion(rail, sequence, { reducedMotion, simple = fa
     rail.removeEventListener('click', click, true);
     document.removeEventListener('visibilitychange', visibility);
     delete gallery.dataset.dragging;
+    delete gallery.dataset.browsing;
     loop.destroy();
   } };
 }

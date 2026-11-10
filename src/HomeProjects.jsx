@@ -14,8 +14,8 @@ function GalleryMedia({ item, active, reducedMotion, duplicate, expanded, onTogg
 
   useEffect(() => {
     if (item.type !== "video") return;
-    return observeWorkVideo(videoRef.current, item.src);
-  }, [item.src, item.type]);
+    return observeWorkVideo(videoRef.current, item.src, { poster: item.poster });
+  }, [item.src, item.type, item.poster]);
 
   // Explicit widths keep WebKit's max-content rows independent of video metadata.
   return <figure className="gallery-piece" style={{ width: `calc(var(--media-height) * (${aspectRatio}))` }}>
@@ -38,6 +38,7 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
   const motionRef = useRef(null);
   const progressRef = useRef();
   const [selected, setSelected] = useState(null);
+  const [caption, setCaption] = useState("");
   const [visited, setVisited] = useState(active || prepared);
   useEffect(() => { if (active || prepared) setVisited(true); }, [active, prepared]);
   useEffect(() => { refreshVideoPlayback(); }, [active, reducedMotion]);
@@ -48,6 +49,7 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
     rail.scrollLeft = 0;
     const motion = createGalleryMotion(rail, sequenceRef.current, {
       reducedMotion, simple, progress: progressRef.current, onInteract: () => dock.current?.clear(),
+      onBrowseChange: refreshVideoPlayback,
     });
     motionRef.current = motion;
     motion.setPaused('focus', rail.closest('.portfolio-page').dataset.input === 'keyboard' && rail.contains(document.activeElement));
@@ -63,6 +65,10 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
     if (!active) return;
     const controller = createGalleryDock(railRef.current, { reducedMotion, simple, scroll: motionRef.current, onSelect: index => {
       motionRef.current?.setPaused('selected', index !== null);
+      if (index !== null) {
+        const item = items[index % items.length];
+        setCaption(item.description || item.alt);
+      }
       setSelected(index);
     } });
     dock.current = controller;
@@ -70,7 +76,7 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
       controller.destroy();
       dock.current = null;
     };
-  }, [active, reducedMotion, simple]);
+  }, [active, reducedMotion, simple, items]);
 
   function moveWithKeys(event) {
     if (event.target.tagName === "VIDEO" || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -107,7 +113,7 @@ function Gallery({ id, items, active, prepared, reducedMotion, simple }) {
       </div>
       <div className="gallery-edge" aria-hidden="true" />
     </div>
-    <p className="gallery-caption" aria-live="polite">{selected === null ? "" : items[selected % items.length].description || items[selected % items.length].alt}</p>
+    <p className="gallery-caption" aria-live="polite" aria-hidden={selected === null}>{caption}</p>
   </div>;
 }
 

@@ -7,13 +7,15 @@ export function refreshVideoPlayback() {
 
 // Loading can run ahead of the horizontal rail, but playback is limited to the
 // actual viewport. Keep the chosen source stable when the cache finishes later.
-export function observeWorkVideo(video, src, { priority = false, sourceFor = getMediaSource } = {}) {
+export function observeWorkVideo(video, src, { priority = false, poster, sourceFor = getMediaSource } = {}) {
   let visible = false;
+  let nearby = false;
   let loaded = false;
   let loadObserver;
   let visibilityObserver;
   const touch = window.matchMedia?.("(pointer: coarse)").matches;
   const playbackThreshold = touch ? 0.25 : 0.01;
+  const gallery = video.closest(".portfolio-gallery");
 
   function load() {
     if (loaded) return;
@@ -24,10 +26,16 @@ export function observeWorkVideo(video, src, { priority = false, sourceFor = get
   }
 
   function syncPlayback() {
+    if (poster && (visible || nearby) && !video.hasAttribute("poster")) video.poster = poster;
+    if (poster && gallery?.dataset.browsing === "true" && !video.controls) {
+      if (!video.paused) video.pause();
+      return;
+    }
+    if (nearby && !document.hidden && !video.closest("[inert]")) load();
     if (video.dataset?.previewBuffering !== "true" && !document.hidden && !video.closest("[inert]") && (visible || video.closest(".media-viewer"))) {
       load();
-      video.play().catch(() => {});
-    } else {
+      if (video.paused) video.play().catch(() => {});
+    } else if (!video.paused) {
       video.pause();
     }
   }
@@ -44,7 +52,8 @@ export function observeWorkVideo(video, src, { priority = false, sourceFor = get
 
     if (!priority) {
       loadObserver = new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) load();
+        nearby = entry.isIntersecting;
+        syncPlayback();
       }, { root: video.closest(".work-rail"), rootMargin: touch ? "0px 160px" : "360px 600px", threshold: 0 });
       loadObserver.observe(video);
     }

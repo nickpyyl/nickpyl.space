@@ -11,7 +11,7 @@
 .gallery-sequence { position: relative; display: flex; flex: none; gap: 8px; height: 100%; padding-right: 8px; }
 .gallery-piece { position: relative; flex: none; height: 100%; margin: 0; overflow: hidden; border-radius: 4px; background: oklch(0.97 0 0); transition: transform 200ms cubic-bezier(.22,1,.36,1); }
 .portfolio-gallery[data-expanded="true"] .gallery-piece { transition-duration: var(--dock-open-duration, 220ms); transition-timing-function: cubic-bezier(.22,1,.36,1); }
-.portfolio-gallery[data-closing="true"] .gallery-piece { transition-duration: 180ms; transition-timing-function: cubic-bezier(.22,1,.36,1); }
+.portfolio-gallery[data-closing="true"] .gallery-piece { transition-duration: 230ms; transition-timing-function: cubic-bezier(.22,1,.36,1); }
 .gallery-piece:has(.gallery-open[aria-expanded="true"]) { z-index: 2; }
 .gallery-piece :is(img, video) { display: block; width: 100%; height: 100%; object-fit: contain; }
 .gallery-open { position: absolute; inset: 0; padding: 0; border: 0; background: transparent; color: inherit; cursor: default; border-radius: inherit; }
@@ -31,6 +31,7 @@ a.gallery-media-status { z-index: 1; pointer-events: auto; text-decoration: unde
 .portfolio-gallery[data-simple="true"] .gallery-viewport::after { right: 0; width: max(var(--gesture-edge, 32px), env(safe-area-inset-right)); }
 .portfolio-gallery[data-dragging="true"] .gallery-piece { transition: none; }
 .portfolio-gallery[data-simple="true"] .gallery-edge { display: none; }
+.portfolio-gallery[data-browsing="true"] .gallery-edge { -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (max-width: 700px) {
   .gallery-caption { font-size: 14px; }
   .gallery-viewport { --gesture-edge: 48px; }

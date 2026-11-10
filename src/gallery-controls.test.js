@@ -157,6 +157,7 @@ test('bursty wheel input moves on consecutive frames, wraps, and hands the exact
   const wheel = distance => listeners.get('wheel')({ deltaY: distance, deltaX: 0, deltaMode: 0, preventDefault() {} });
   wheel(70);
   wheel(50);
+  assert.equal(gallery.dataset.browsing, 'true');
   assert.equal(motion.getPosition(), start);
   assert.equal(frames.size, 1);
   tick();
@@ -170,6 +171,7 @@ test('bursty wheel input moves on consecutive frames, wraps, and hands the exact
   assert.ok(Math.abs(motion.getPosition() - (start - 180 + 1000)) < .0001);
   assert.equal(frames.size, 0);
   assert.equal(gallery.dataset.scrolling, undefined);
+  assert.equal(gallery.dataset.browsing, undefined);
   assert.equal(animations.length, 2);
 });
 

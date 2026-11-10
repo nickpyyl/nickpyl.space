@@ -50,7 +50,7 @@ button { font: inherit; }
   align-items: center;
   gap: 8px;
   min-height: 38px;
-  padding: 0 14px 0 16px;
+  padding: 0 10px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -70,16 +70,18 @@ button { font: inherit; }
   transition: transform 150ms cubic-bezier(.22,1,.36,1);
 }
 .portfolio-page .portfolio-email:focus-visible { border-radius: 999px; }
-.portfolio-email .email-address { color: var(--home-text); -webkit-user-select: text; user-select: text; transition: color 150ms ease; }
+.portfolio-email .email-address { color: var(--home-text); -webkit-user-select: text; user-select: text; }
 .portfolio-email .email-address::selection { color: HighlightText; background: Highlight; }
-.email-action { display: grid; min-width: 5ch; }
+.email-action { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; inline-size: 4ch; overflow: clip; transition: inline-size 220ms cubic-bezier(.22,1,.36,1); }
 .email-action > span { grid-area: 1 / 1; transition: opacity 140ms ease, transform 180ms cubic-bezier(.22,1,.36,1); }
-.email-copied { opacity: 0; transform: translateY(4px); }
-.portfolio-email[data-copied="true"] .email-copy { opacity: 0; transform: translateY(-4px); }
-.portfolio-email[data-copied="true"] .email-copied { opacity: 1; transform: none; }
+.email-copy { justify-self: start; }
+.email-copied { display: inline-flex; align-items: center; gap: 4px; width: max-content; opacity: 0; transform: translateX(4px); }
+.portfolio-email[data-status="copied"] .email-action { inline-size: 7.5ch; }
+.portfolio-email[data-status="manual"] .email-action { inline-size: max-content; }
+.portfolio-email[data-status="copied"] .email-copy { opacity: 0; transform: translateX(-4px); }
+.portfolio-email[data-status="copied"] .email-copied { opacity: 1; transform: none; }
 @media (hover: hover) and (pointer: fine) {
   .portfolio-email:hover::before { transform: scale(1.015, 1.05); }
-  .portfolio-email:hover .email-address { color: var(--home-strong); }
 }
 .portfolio-email:active::before { transform: scale(.985, .97); }
 .portfolio-navigation { display: flex; align-items: center; gap: 16px; }
@@ -151,7 +153,7 @@ button { font: inherit; }
   bottom: 100%;
   width: clamp(100px, calc((50svh - var(--media-height) / 2 - var(--page-gutter) - 82px) * .8), 168px);
   display: grid;
-  gap: 4px;
+  gap: 8px;
   padding-bottom: 12px;
   opacity: 0;
   visibility: hidden;
@@ -159,7 +161,7 @@ button { font: inherit; }
   transition: opacity 160ms ease-out, transform 180ms cubic-bezier(.22,1,.36,1), visibility 0s 180ms;
 }
 .letterboxd-preview[data-open="true"] { visibility: visible; opacity: 1; transform: none; transition-delay: 0s; }
-.letterboxd-rating { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 12px; line-height: 1.2; color: var(--home-text); }
+.letterboxd-rating { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 12px; line-height: 1.2; color: oklch(0.554 0 0); }
 .letterboxd-preview img { display: block; width: 100%; height: auto; border-radius: 4px; box-shadow: 0 8px 22px oklch(0 0 0 / .18); }
 .portfolio-page .interactive-label { position: relative; display: inline-block; transform-origin: center; transition: transform 180ms cubic-bezier(.22,1,.36,1); }
 .portfolio-page .home-hover-text > * { position: relative; display: inline-block; transition: transform 180ms cubic-bezier(.22,1,.36,1); }
@@ -183,6 +185,9 @@ button { font: inherit; }
   .portfolio-page :is(a, button:not(:disabled)):hover .interactive-label-gradient { opacity: .94; animation: nav-gradient-sweep 850ms cubic-bezier(.4,0,.2,1) both; }
   .portfolio-page .home-hover-text > [data-hover-side="before"] { transform: translateX(calc(-1 * var(--hover-room, 1px))); }
   .portfolio-page .home-hover-text > [data-hover-side="after"] { transform: translateX(var(--hover-room, 1px)); }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .letterboxd-preview[data-open="true"] { transform: translateX(var(--preview-x, 0px)); }
 }
 .portfolio-page :is(a, button:not(:disabled)):active .interactive-label { transform: scale(.96); transition-duration: 90ms; }
 @keyframes nav-gradient-sweep { from { background-position: 100% 0; } to { background-position: 0 0; } }

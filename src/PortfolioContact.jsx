@@ -28,11 +28,16 @@ export function EmailContact() {
   }
 
   return <>
-    <button className="portfolio-email" type="button" onClick={copyEmail} data-copied={status === "copied"} aria-label={`Copy email address ${email}`}>
+    <button className="portfolio-email" type="button" onClick={copyEmail} data-status={status} aria-label={`Copy email address ${email}`}>
       <span className="email-address" ref={address}>{email}</span>
       <span className="email-action" aria-hidden="true">
-        <span className="email-copy">{status === "manual" ? "copy manually" : "copy"}</span>
-        <span className="email-copied">copied</span>
+        <span className="email-copy"><InteractiveLabel>{status === "manual" ? "copy manually" : "copy"}</InteractiveLabel></span>
+        <span className="email-copied">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" focusable="false">
+            <path d="m3 8 3.2 3.2L13 4.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          copied
+        </span>
       </span>
     </button>
     <span className="visually-hidden" role="status">{status === "copied" ? "Email address copied" : status === "manual" ? "Email address selected for copying" : ""}</span>
@@ -41,6 +46,15 @@ export function EmailContact() {
 
 function LetterboxdLink() {
   const [open, setOpen] = useState(false);
+  const preview = useRef(null);
+
+  function followPointer(event) {
+    if (event.pointerType !== "mouse" || preview.current.contains(event.target)) return;
+    const { left, width } = event.currentTarget.getBoundingClientRect();
+    const fraction = Math.max(0, Math.min(1, (event.clientX - left) / width));
+    preview.current.style.setProperty("--preview-x", `${(fraction - .5) * 10}px`);
+  }
+
   useEffect(() => {
     if (!open) return;
     function dismiss(event) {
@@ -52,17 +66,25 @@ function LetterboxdLink() {
 
   return <a className="letterboxd-link" href="https://letterboxd.com/nickpyl/" target="_blank" rel="noreferrer"
     aria-label="Nick Pyl on Letterboxd" aria-describedby={open ? "recent-film" : undefined}
-    onPointerEnter={event => { if (event.pointerType === "mouse") setOpen(true); }}
-    onPointerLeave={event => { if (!event.currentTarget.matches(":focus-visible")) setOpen(false); }}
+    onPointerEnter={event => {
+      if (event.pointerType !== "mouse") return;
+      followPointer(event);
+      setOpen(true);
+    }}
+    onPointerMove={followPointer}
+    onPointerLeave={event => {
+      preview.current.style.removeProperty("--preview-x");
+      if (!event.currentTarget.matches(":focus-visible")) setOpen(false);
+    }}
     onFocus={event => { if (event.currentTarget.matches(":focus-visible")) setOpen(true); }}
     onBlur={() => setOpen(false)}>
     <InteractiveLabel>letterboxd</InteractiveLabel>
-    <span className="letterboxd-preview" id="recent-film" role="tooltip" data-open={open} aria-hidden={!open}>
+    <span ref={preview} className="letterboxd-preview" id="recent-film" role="tooltip" data-open={open} aria-hidden={!open}>
       <span className="letterboxd-rating" aria-hidden="true">
         Recent
         <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" focusable="false">
           <path d="M8 1.8l1.9 3.85 4.25.62-3.08 3 .73 4.24L8 11.5l-3.8 2.01.73-4.24-3.08-3 4.25-.62Z"
-            stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+            stroke="currentColor" strokeWidth="0.65" strokeLinejoin="round" />
         </svg>
         4,5
       </span>

@@ -27,13 +27,16 @@ a.gallery-media-status { z-index: 1; pointer-events: auto; text-decoration: unde
 /* Edge hits bypass the rail so Safari keeps its back/forward gestures. */
 .portfolio-gallery[data-simple="true"] .gallery-viewport::before,
 .portfolio-gallery[data-simple="true"] .gallery-viewport::after { content: ""; position: absolute; inset-block: 0; z-index: 3; pointer-events: auto; touch-action: auto; }
-.portfolio-gallery[data-simple="true"] .gallery-viewport::before { left: 0; width: max(32px, env(safe-area-inset-left)); }
-.portfolio-gallery[data-simple="true"] .gallery-viewport::after { right: 0; width: max(32px, env(safe-area-inset-right)); }
+.portfolio-gallery[data-simple="true"] .gallery-viewport::before { left: 0; width: max(var(--gesture-edge, 32px), env(safe-area-inset-left)); }
+.portfolio-gallery[data-simple="true"] .gallery-viewport::after { right: 0; width: max(var(--gesture-edge, 32px), env(safe-area-inset-right)); }
 .portfolio-gallery[data-dragging="true"] .gallery-piece { transition: none; }
 .portfolio-gallery[data-simple="true"] .gallery-edge { display: none; }
 @media (max-width: 700px) {
   .gallery-caption { font-size: 14px; }
-  .portfolio-gallery[data-simple="true"] .gallery-rail { touch-action: pan-y pinch-zoom; }
+  .gallery-viewport { --gesture-edge: 48px; }
+  /* The rail's padding makes room for expanded cards; it isn't a swipe target. */
+  .portfolio-gallery[data-simple="true"] .gallery-rail { pointer-events: none; touch-action: pan-y pinch-zoom; }
+  .portfolio-page:not([data-view-phase="exiting"]) .portfolio-gallery[data-active="true"] .gallery-track { pointer-events: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   .gallery-piece, .gallery-caption { transition: none; }

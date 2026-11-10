@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HoverText } from "./HoverText.jsx";
 import InteractiveLabel from "./InteractiveLabel.jsx";
+import { EmailContact, SocialLinks } from "./PortfolioContact.jsx";
 import HomeProjects from "./HomeProjects.jsx";
 import AboutPhotos from "./AboutPhotos.jsx";
 import { createPageTransition, pageTransitionTiming } from "./page-transition.js";
 import avatar from "../assets/avatar-nick-96.jpg";
 import "./home-redesign.css";
-
-const amsterdamTime = new Intl.DateTimeFormat("en-US", {
-  timeZone: "Europe/Amsterdam", hour: "numeric", minute: "2-digit", hour12: true,
-});
 
 const navigationItems = [
   { id: "explorations", label: "explorations", key: "E" },
@@ -18,35 +15,6 @@ const navigationItems = [
   { id: "about", label: "memo", key: "M" },
 ];
 const availableTabs = navigationItems.filter(item => !item.disabled).map(item => item.id);
-
-function ContactLinks({ className }) {
-  return <div className={className}>
-    <HoverText>
-      Say hi via <a href="mailto:hello@nickpyl.space"><InteractiveLabel>email</InteractiveLabel></a>, <a href="https://www.instagram.com/nickphylm/" target="_blank" rel="noreferrer" aria-label="Nick Pyl on Instagram"><InteractiveLabel>instagram</InteractiveLabel></a>, or {" "}
-      <a href="https://x.com/nickpyl" target="_blank" rel="noreferrer" aria-label="Nick Pyl on Twitter"><InteractiveLabel>twitter</InteractiveLabel></a>
-    </HoverText>
-  </div>;
-}
-
-function AmsterdamClock() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    let timer;
-    const tick = () => {
-      window.clearTimeout(timer);
-      if (document.hidden) return;
-      setNow(new Date());
-      timer = window.setTimeout(tick, 60000 - Date.now() % 60000);
-    };
-    tick();
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      window.clearTimeout(timer);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, []);
-  return <time className="portfolio-clock" dateTime={now.toISOString()}>Amsterdam {amsterdamTime.format(now)}</time>;
-}
 
 export default function HomeRedesign({ projects }) {
   const [navigation, setNavigation] = useState({ view: "explorations", target: "explorations", phase: "idle" });
@@ -137,7 +105,7 @@ export default function HomeRedesign({ projects }) {
             </button>)}
         </div>
       </nav>
-      <ContactLinks className="portfolio-contact-top" />
+      <EmailContact />
     </header>
 
     <section className="portfolio-work" data-active={activeView !== "about"} aria-hidden={activeView === "about"} aria-label="Selected projects">
@@ -161,8 +129,7 @@ export default function HomeRedesign({ projects }) {
           }}><InteractiveLabel>Fuse</InteractiveLabel></a>,<br /> where I redesigned the product experience.</HoverText>
         </>}
       </div>
-      <ContactLinks className="portfolio-contact-bottom" />
-      <AmsterdamClock />
+      <SocialLinks />
     </footer>
   </main>;
 }
